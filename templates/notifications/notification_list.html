@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Уведомления{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap;">
+        <div>
+            <h1 style="margin:0 0 8px;">Уведомления</h1>
+            <p style="margin:0; color:var(--muted);">Внутренние события системы: заявки, подтверждения, отказы, отмены и завершение броней.</p>
+        </div>
+        {% if unread_notification_count %}
+            <form method="post" action="{% url 'notifications:read-all' %}">
+                {% csrf_token %}
+                <button type="submit" class="button">Прочитать все</button>
+            </form>
+        {% endif %}
+    </div>
+
+    <h2 style="margin-top:28px;">Непрочитанные</h2>
+    <div class="grid">
+        {% for item in unread_notifications %}
+            <article class="meta-row" style="border-color:#b6d5cf;">
+                <div style="display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+                    <div>
+                        <div class="meta-value">{{ item.title }}</div>
+                        <div style="color:var(--muted);">{{ item.created_at|date:"d.m.Y H:i" }}</div>
+                    </div>
+                    <span class="status-badge status-badge--pending">Новое</span>
+                </div>
+                <p style="margin:10px 0 14px;">{{ item.message }}</p>
+                <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center;">
+                    <div style="color:var(--muted);">
+                        {% if item.actor %}Инициатор: {{ item.actor.full_name|default:item.actor.username }}{% endif %}
+                    </div>
+                    <form method="post" action="{% url 'notifications:read' item.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="button button--primary">Отметить прочитанным</button>
+                    </form>
+                </div>
+            </article>
+        {% empty %}
+            <div class="meta-row">Непрочитанных уведомлений нет.</div>
+        {% endfor %}
+    </div>
+
+    <h2 style="margin-top:28px;">История</h2>
+    <div class="grid">
+        {% for item in read_notifications %}
+            <article class="meta-row">
+                <div class="meta-value">{{ item.title }}</div>
+                <div style="color:var(--muted);">{{ item.created_at|date:"d.m.Y H:i" }}</div>
+                <p style="margin:10px 0 0;">{{ item.message }}</p>
+            </article>
+        {% empty %}
+            <div class="meta-row">История уведомлений пока пуста.</div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

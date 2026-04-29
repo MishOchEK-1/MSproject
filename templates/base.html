@@ -192,6 +192,82 @@
             font-weight: 700;
         }
 
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.92rem;
+            font-weight: 700;
+            border: 1px solid transparent;
+        }
+
+        .status-badge--success,
+        .status-badge--approved {
+            color: #055c3a;
+            background: #d6f5e8;
+            border-color: #9ad5b2;
+        }
+
+        .status-badge--warning,
+        .status-badge--pending {
+            color: #8a4b08;
+            background: #fce6c8;
+            border-color: #ebc589;
+        }
+
+        .status-badge--blocked,
+        .status-badge--danger {
+            color: #8a1f17;
+            background: #fee4e2;
+            border-color: #f2b8b5;
+        }
+
+        .status-badge--free {
+            color: #0f766e;
+            background: #dff7f3;
+            border-color: #9edfd4;
+        }
+
+        .schedule-slot {
+            min-width: 72px;
+            min-height: 44px;
+            padding: 8px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border: 1px solid transparent;
+        }
+
+        .schedule-slot--free {
+            color: #0f766e;
+            background: #dff7f3;
+            border-color: #9edfd4;
+        }
+
+        .schedule-slot--approved {
+            color: #055c3a;
+            background: #d6f5e8;
+            border-color: #9ad5b2;
+        }
+
+        .schedule-slot--pending {
+            color: #8a4b08;
+            background: #fce6c8;
+            border-color: #ebc589;
+        }
+
+        .schedule-slot--blocked,
+        .schedule-slot--rejected,
+        .schedule-slot--cancelled,
+        .schedule-slot--expired {
+            color: #8a1f17;
+            background: #fee4e2;
+            border-color: #f2b8b5;
+        }
+
         @media (max-width: 760px) {
             .grid--two {
                 grid-template-columns: 1fr;
@@ -211,9 +287,14 @@
             <div class="nav__links">
                 {% if request.user.is_authenticated %}
                     <a class="pill" href="{% url 'equipment:list' %}">Оборудование</a>
+                    <a class="pill" href="{% url 'equipment:schedule' %}">Загрузка</a>
                     <a class="pill" href="{% url 'reservations:list' %}">Мои брони</a>
+                    <a class="pill" href="{% url 'notifications:list' %}">
+                        Уведомления{% if unread_notification_count %} ({{ unread_notification_count }}){% endif %}
+                    </a>
                     {% if request.user.can_review_reservations %}
                         <a class="pill" href="{% url 'reservations:staff-dashboard' %}">Панель персонала</a>
+                        <a class="pill" href="{% url 'users:training-dashboard' %}">Инструктаж</a>
                     {% endif %}
                     <a class="pill" href="{% url 'users:profile' %}">Профиль</a>
                     <a class="pill" href="{% url 'users:profile-edit' %}">Редактировать профиль</a>

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Загрузка оборудования{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap;">
+        <div>
+            <h1 style="margin:0 0 8px;">Загрузка оборудования</h1>
+            <p style="margin:0; color:var(--muted);">Дневная обзорная сетка по всему оборудованию с фильтрами и цветовой индикацией статусов.</p>
+        </div>
+        <a href="{% url 'equipment:list' %}" class="pill">Список оборудования</a>
+    </div>
+
+    <form method="get" class="grid grid--two" style="margin-top:24px;">
+        <div>
+            <label for="id_q">Поиск</label>
+            <input id="id_q" type="text" name="q" value="{{ request.GET.q }}" placeholder="Название или инвентарный номер">
+        </div>
+        <div>
+            <label for="id_category">Категория</label>
+            <select id="id_category" name="category">
+                <option value="">Все категории</option>
+                {% for category in categories %}
+                    <option value="{{ category.id }}" {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="id_status">Статус оборудования</label>
+            <select id="id_status" name="status">
+                <option value="">Все статусы</option>
+                {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="id_date">День</label>
+            <select id="id_date" name="date">
+                {% for day in day_choices %}
+                    <option value="{{ day|date:'Y-m-d' }}" {% if day == selected_day %}selected{% endif %}>{{ day|date:"d.m.Y" }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex; gap:12px; align-items:end;">
+            <button type="submit" class="button button--primary">Показать</button>
+            <a href="{% url 'equipment:schedule' %}" class="pill">Сбросить</a>
+        </div>
+    </form>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:24px;">
+        <span class="status-badge status-badge--free">Свободно</span>
+        <span class="status-badge status-badge--approved">Подтверждена</span>
+        <span class="status-badge status-badge--pending">На подтверждении</span>
+        <span class="status-badge status-badge--blocked">Недоступно</span>
+    </div>
+
+    <div style="overflow-x:auto; margin-top:24px;">
+        <table style="width:100%; border-collapse:separate; border-spacing:0 10px; min-width:1200px;">
+            <thead>
+                <tr>
+                    <th style="text-align:left; padding:8px 12px;">Оборудование</th>
+                    <th style="text-align:left; padding:8px 12px;">Занято, ч</th>
+                    {% for hour in hour_labels %}
+                        <th style="text-align:center; padding:8px 6px; color:var(--muted);">{{ hour }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in schedule_rows %}
+                    <tr>
+                        <td style="padding:10px 12px; background:#fff; border:1px solid var(--border); border-radius:14px 0 0 14px;">
+                            <div class="meta-value">{{ row.equipment.name }}</div>
+                            <div style="color:var(--muted);">{{ row.equipment.category.name }}</div>
+                        </td>
+                        <td style="padding:10px 12px; background:#fff; border-top:1px solid var(--border); border-bottom:1px solid var(--border);">{{ row.busy_hours }}</td>
+                        {% for slot in row.slots %}
+                            <td style="padding:6px; background:#fff; border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
+                                <div class="schedule-slot schedule-slot--{{ slot.type }}" title="{{ slot.label }}{% if slot.detail %} · {{ slot.detail }}{% endif %}">
+                                    <span>{{ slot.label|truncatechars:10 }}</span>
+                                </div>
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="26">
+                            <div class="meta-row">Оборудование по выбранным фильтрам не найдено.</div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

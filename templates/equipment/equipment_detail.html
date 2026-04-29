@@ -10,8 +10,9 @@
             <p style="margin:0; color:var(--muted);">{{ equipment.category.name }} · {{ equipment.inventory_number }}</p>
         </div>
         <div style="display:flex; gap:12px; flex-wrap:wrap;">
-            <span class="pill">{{ equipment.get_status_display }}</span>
+            <span class="status-badge status-badge--{% if equipment.status == 'available' %}free{% elif equipment.status == 'maintenance' %}warning{% else %}danger{% endif %}">{{ equipment.get_status_display }}</span>
             <a href="{% url 'reservations:create' equipment.pk %}" class="pill pill--primary">Забронировать</a>
+            <a href="{% url 'equipment:schedule' %}?date={{ selected_day|date:'Y-m-d' }}" class="pill">Общая загрузка</a>
         </div>
     </div>
 
@@ -68,10 +69,10 @@
                 </div>
                 <div style="text-align:right;">
                     {% if slot.reservation %}
-                        <div class="meta-value">{{ slot.reservation.get_status_display }}</div>
-                        <div style="color:var(--muted);">{{ slot.owner_label }}</div>
+                        <div><span class="status-badge status-badge--{% if slot.status == 'approved' %}approved{% else %}pending{% endif %}">{{ slot.reservation.get_status_display }}</span></div>
+                        <div style="color:var(--muted); margin-top:6px;">{{ slot.owner_label }}</div>
                     {% else %}
-                        <div class="meta-value" style="color:var(--success);">Свободно</div>
+                        <div><span class="status-badge status-badge--free">Свободно</span></div>
                     {% endif %}
                 </div>
             </div>

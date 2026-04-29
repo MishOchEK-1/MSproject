@@ -56,5 +56,38 @@
             <span class="meta-label">Цель визита</span>
             <span class="meta-value" style="font-weight: 500;">{{ request.user.visit_purpose|default:"Не указана" }}</span>
         </div>
+
+        <div class="grid grid--two" style="margin-top:24px;">
+            <div class="meta-list">
+                <div class="meta-row">
+                    <span class="meta-label">Ближайшие брони</span>
+                    {% for reservation in upcoming_reservations %}
+                        <div style="margin-top:10px;">
+                            <div class="meta-value">{{ reservation.equipment.name }}</div>
+                            <div style="color:var(--muted);">{{ reservation.start_at|date:"d.m.Y H:i" }} - {{ reservation.end_at|date:"d.m.Y H:i" }}</div>
+                        </div>
+                    {% empty %}
+                        <div style="color:var(--muted);">Активных броней пока нет.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="meta-list">
+                <div class="meta-row">
+                    <div style="display:flex; justify-content:space-between; gap:12px; align-items:center;">
+                        <span class="meta-label" style="margin-bottom:0;">Последние уведомления</span>
+                        <a href="{% url 'notifications:list' %}" class="pill">Все</a>
+                    </div>
+                    {% for item in recent_notifications %}
+                        <div style="margin-top:10px;">
+                            <div class="meta-value">{{ item.title }}</div>
+                            <div style="color:var(--muted);">{{ item.created_at|date:"d.m.Y H:i" }}</div>
+                        </div>
+                    {% empty %}
+                        <div style="color:var(--muted);">Уведомлений пока нет.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
     </section>
 {% endblock %}

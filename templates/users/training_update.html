@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Статус инструктажа{% endblock %}
+
+{% block content %}
+<section class="card" style="max-width:720px;">
+    <h1 style="margin-top:0;">Статус инструктажа</h1>
+    <p style="color:var(--muted);">
+        {{ object.full_name }} · {{ object.email }} · {{ object.get_role_display }}
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div>
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                    <div class="errors">{{ field.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <button type="submit" class="button button--primary">Сохранить статус</button>
+            <a href="{% url 'users:training-dashboard' %}" class="pill">Назад</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

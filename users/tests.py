@@ -255,3 +255,48 @@ class AuthenticationFlowTests(TestCase):
         self.assertEqual(user.full_name, 'Updated User')
         self.assertEqual(user.phone, '+70000000021')
         self.assertEqual(user.role, UserRole.GUEST)
+
+
+class TrainingManagementTests(TestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username='training-staff',
+            password='secure-pass-123',
+            email='training-staff@edu.omsk.ru',
+            full_name='Training Staff',
+            phone='+70000000060',
+            role=UserRole.STAFF,
+        )
+        self.guest = User.objects.create_user(
+            username='training-guest',
+            password='secure-pass-123',
+            email='training-guest@example.com',
+            full_name='Training Guest',
+            phone='+70000000061',
+            role=UserRole.GUEST,
+            has_completed_training=False,
+        )
+
+    def test_staff_can_open_training_dashboard(self):
+        self.client.force_login(self.staff)
+        response = self.client.get(reverse('users:training-dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Training Guest')
+
+    def test_staff_can_update_training_status(self):
+        self.client.force_login(self.staff)
+        response = self.client.post(
+            reverse('users:training-update', args=[self.guest.pk]),
+            {'has_completed_training': 'on'},
+        )
+
+        self.assertRedirects(response, reverse('users:training-dashboard'))
+        self.guest.refresh_from_db()
+        self.assertTrue(self.guest.has_completed_training)
+
+    def test_guest_cannot_access_training_dashboard(self):
+        self.client.force_login(self.guest)
+        response = self.client.get(reverse('users:training-dashboard'))
+
+        self.assertEqual(response.status_code, 403)

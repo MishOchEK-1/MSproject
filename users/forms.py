@@ -106,3 +106,13 @@ class UserProfileForm(forms.ModelForm):
         if existing.exists():
             raise forms.ValidationError('Пользователь с таким email уже существует.')
         return email
+
+
+class UserTrainingStatusForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ('has_completed_training',)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['has_completed_training'].label = 'Инструктаж пройден'

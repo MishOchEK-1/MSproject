@@ -75,3 +75,10 @@ class EquipmentViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Ближайшее свободное время')
+
+    def test_equipment_schedule_page_is_available(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('equipment:schedule'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Загрузка оборудования')
