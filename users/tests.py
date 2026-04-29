@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.contrib.auth.models import AnonymousUser
 from django.test import TestCase
 from django.utils import timezone
+from django.urls import reverse
 
 from equipment.models import Equipment, EquipmentCategory
 from reservations.models import Reservation, ReservationStatus
@@ -176,3 +177,81 @@ class PermissionRulesTests(TestCase):
         self.assertTrue(can_cancel_reservation(self.student, self.reservation))
         self.assertTrue(can_cancel_reservation(self.staff, self.reservation))
         self.assertFalse(can_cancel_reservation(self.guest, self.reservation))
+
+
+class AuthenticationFlowTests(TestCase):
+    def test_registration_creates_guest_and_logs_user_in(self):
+        response = self.client.post(
+            reverse('users:register'),
+            {
+                'full_name': 'New Guest',
+                'email': 'newguest@example.com',
+                'phone': '+70000000018',
+                'organization': 'Outside Org',
+                'visit_purpose': 'Хочу воспользоваться оборудованием',
+                'password1': 'VerySecurePassword123',
+                'password2': 'VerySecurePassword123',
+            },
+        )
+
+        self.assertRedirects(response, reverse('users:profile'))
+        user = User.objects.get(email='newguest@example.com')
+        self.assertEqual(user.role, UserRole.GUEST)
+        self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
+
+    def test_login_accepts_email_and_password(self):
+        user = User.objects.create_user(
+            username='login-user',
+            password='secure-pass-456',
+            email='login@example.com',
+            full_name='Login User',
+            phone='+70000000019',
+        )
+
+        response = self.client.post(
+            reverse('users:login'),
+            {
+                'email': user.email,
+                'password': 'secure-pass-456',
+            },
+        )
+
+        self.assertRedirects(response, reverse('users:profile'))
+        self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
+
+    def test_profile_requires_authentication(self):
+        response = self.client.get(reverse('users:profile'))
+
+        self.assertRedirects(
+            response,
+            f"{reverse('users:login')}?next={reverse('users:profile')}",
+        )
+
+    def test_profile_update_changes_allowed_fields_only(self):
+        user = User.objects.create_user(
+            username='edit-user',
+            password='secure-pass-789',
+            email='edit@example.com',
+            full_name='Edit User',
+            phone='+70000000020',
+            role=UserRole.GUEST,
+        )
+        self.client.force_login(user)
+
+        response = self.client.post(
+            reverse('users:profile-edit'),
+            {
+                'full_name': 'Updated User',
+                'email': 'edit@example.com',
+                'phone': '+70000000021',
+                'organization': 'Updated Org',
+                'visit_purpose': 'Updated reason',
+                'role': UserRole.ADMIN,
+            },
+        )
+
+        self.assertRedirects(response, reverse('users:profile'))
+        user.refresh_from_db()
+        self.assertEqual(user.full_name, 'Updated User')
+        self.assertEqual(user.phone, '+70000000021')
+        self.assertEqual(user.role, UserRole.GUEST)
