@@ -78,6 +78,10 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 AUTH_USER_MODEL = 'users.User'
+AUTHENTICATION_BACKENDS = [
+    'users.backends.EmailBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 LANGUAGE_CODE = 'ru-ru'
 
@@ -93,8 +97,8 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-LOGIN_URL = 'admin:login'
-LOGIN_REDIRECT_URL = 'index'
+LOGIN_URL = 'users:login'
+LOGIN_REDIRECT_URL = 'users:profile'
 LOGOUT_REDIRECT_URL = 'index'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

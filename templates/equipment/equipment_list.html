@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Оборудование{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap;">
+        <div>
+            <h1 style="margin:0 0 8px;">Оборудование</h1>
+            <p style="margin:0; color:var(--muted);">Ищи станки по категории, статусу и ключевым словам.</p>
+        </div>
+        <a href="{% url 'reservations:list' %}" class="pill">Мои брони</a>
+    </div>
+
+    <form method="get" class="grid grid--two" style="margin-top:24px;">
+        <div>
+            <label for="id_q">Поиск</label>
+            <input id="id_q" type="text" name="q" value="{{ request.GET.q }}" placeholder="Название, номер, описание">
+        </div>
+        <div>
+            <label for="id_category">Категория</label>
+            <select id="id_category" name="category">
+                <option value="">Все категории</option>
+                {% for category in categories %}
+                    <option value="{{ category.id }}" {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="id_status">Статус</label>
+            <select id="id_status" name="status">
+                <option value="">Все статусы</option>
+                {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div style="display:flex; align-items:end; gap:12px;">
+            <button type="submit" class="button button--primary">Применить</button>
+            <a href="{% url 'equipment:list' %}" class="pill">Сбросить</a>
+        </div>
+    </form>
+
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top:24px;">
+        {% for equipment in equipment_items %}
+            <article class="meta-row">
+                <div style="display:flex; justify-content:space-between; gap:12px;">
+                    <strong>{{ equipment.name }}</strong>
+                    <span class="pill">{{ equipment.get_status_display }}</span>
+                </div>
+                <p style="color:var(--muted); margin:10px 0 8px;">{{ equipment.category.name }} · {{ equipment.inventory_number }}</p>
+                <p style="margin:0 0 14px;">{{ equipment.description|default:"Описание пока не заполнено."|truncatechars:140 }}</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                    <span style="color:var(--muted);">Слот: {{ equipment.slot_duration_minutes }} мин</span>
+                    <a href="{% url 'equipment:detail' equipment.pk %}" class="pill pill--primary">Открыть</a>
+                </div>
+            </article>
+        {% empty %}
+            <div class="meta-row">Ничего не найдено по текущим фильтрам.</div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Редактирование профиля{% endblock %}
+
+{% block content %}
+    <section class="card">
+        <h1 style="margin-top: 0;">Редактирование профиля</h1>
+
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+                <div>
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <div class="errors">{{ field.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            {% if form.non_field_errors %}
+                <div class="errors">{{ form.non_field_errors|join:", " }}</div>
+            {% endif %}
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <button type="submit" class="button button--primary">Сохранить</button>
+                <a href="{% url 'users:profile' %}" class="pill">Отмена</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

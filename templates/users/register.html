@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Регистрация{% endblock %}
+
+{% block content %}
+    <section class="card">
+        <h1 style="margin-top: 0;">Регистрация</h1>
+        <p style="color: var(--muted); margin-top: 0;">
+            После регистрации пользователь создается как гость. Роль студента или персонала назначается позже персоналом/администратором.
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+                <div>
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <span class="helptext">{{ field.help_text }}</span>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="errors">{{ field.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            {% if form.non_field_errors %}
+                <div class="errors">{{ form.non_field_errors|join:", " }}</div>
+            {% endif %}
+            <button type="submit" class="button button--primary">Создать профиль</button>
+        </form>
+    </section>
+{% endblock %}

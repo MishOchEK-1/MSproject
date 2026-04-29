@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if decision_mode == 'approve' %}Подтверждение заявки{% else %}Отклонение заявки{% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="card" style="max-width:760px;">
+    <h1 style="margin-top:0;">
+        {% if decision_mode == 'approve' %}Подтверждение заявки{% else %}Отклонение заявки{% endif %}
+    </h1>
+    <p style="color:var(--muted);">
+        {{ reservation.user.full_name }} · {{ reservation.equipment.name }} · {{ reservation.start_at|date:"d.m.Y H:i" }} - {{ reservation.end_at|date:"d.m.Y H:i" }}
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <div>
+            <label for="{{ form.staff_comment.id_for_label }}">{{ form.staff_comment.label }}</label>
+            {{ form.staff_comment }}
+            {% if form.staff_comment.errors %}
+                <div class="errors">{{ form.staff_comment.errors|join:", " }}</div>
+            {% endif %}
+        </div>
+        {% if decision_mode == 'reject' %}
+            <div>
+                <label for="{{ form.rejection_reason.id_for_label }}">{{ form.rejection_reason.label }}</label>
+                {{ form.rejection_reason }}
+                {% if form.rejection_reason.errors %}
+                    <div class="errors">{{ form.rejection_reason.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+        {% endif %}
+        {% if form.non_field_errors %}
+            <div class="errors">{{ form.non_field_errors|join:", " }}</div>
+        {% endif %}
+        <button type="submit" class="button button--primary">
+            {% if decision_mode == 'approve' %}Подтвердить{% else %}Отклонить{% endif %}
+        </button>
+    </form>
+</section>
+{% endblock %}

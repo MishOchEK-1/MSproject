@@ -148,7 +148,10 @@ class Reservation(models.Model):
         if self.status == ReservationStatus.REJECTED and not self.rejection_reason.strip():
             errors['rejection_reason'] = 'Для отклоненной заявки нужно указать причину отказа.'
 
-        if self.equipment_id and self.start_at and self.end_at:
+        if self.equipment_id and self.start_at and self.end_at and self.status in self.ACTIVE_STATUSES:
+            if not self.equipment.is_bookable:
+                errors['equipment'] = 'Это оборудование сейчас недоступно для бронирования.'
+
             overlap_queryset = Reservation.objects.filter(
                 equipment=self.equipment,
                 status__in=self.ACTIVE_STATUSES,

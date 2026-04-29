@@ -1,7 +1,10 @@
-from django.test import TestCase
-from django.utils import timezone
 from datetime import timedelta
 
+from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
+
+from users.models import User, UserRole
 from .models import Equipment, EquipmentCategory, EquipmentDowntime
 
 
@@ -34,3 +37,41 @@ class EquipmentModelTests(TestCase):
 
         with self.assertRaisesMessage(Exception, 'Период недоступности должен заканчиваться позже начала.'):
             downtime.full_clean()
+
+
+class EquipmentViewTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='equipment-user',
+            password='secure-pass-123',
+            email='equipment@example.com',
+            full_name='Equipment User',
+            phone='+70000000030',
+            role=UserRole.GUEST,
+        )
+        self.category = EquipmentCategory.objects.create(name='Паяльные станции')
+        self.equipment = Equipment.objects.create(
+            name='Hakko 1',
+            category=self.category,
+            inventory_number='SOL-001',
+            description='Паяльная станция с тонким жалом.',
+        )
+
+    def test_equipment_list_requires_login(self):
+        response = self.client.get(reverse('equipment:list'))
+
+        self.assertEqual(response.status_code, 302)
+
+    def test_equipment_list_is_available_for_authenticated_user(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('equipment:list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Hakko 1')
+
+    def test_equipment_detail_shows_nearest_free_slot(self):
+        self.client.force_login(self.user)
+        response = self.client.get(reverse('equipment:detail', args=[self.equipment.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Ближайшее свободное время')

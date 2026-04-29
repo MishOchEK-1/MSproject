@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Панель персонала{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h1 style="margin-top:0;">Панель подтверждения заявок</h1>
+    <p style="margin-top:0; color:var(--muted);">Здесь персонал подтверждает и отклоняет входящие заявки.</p>
+
+    <h2>Заявки на подтверждении</h2>
+    <div class="grid">
+        {% for reservation in pending_reservations %}
+            <article class="meta-row">
+                <div class="meta-value">{{ reservation.equipment.name }}</div>
+                <div style="color:var(--muted);">
+                    {{ reservation.user.full_name }} · {{ reservation.start_at|date:"d.m.Y H:i" }} - {{ reservation.end_at|date:"d.m.Y H:i" }}
+                </div>
+                <p style="margin:10px 0;">{{ reservation.request_comment|default:"Комментарий не указан." }}</p>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <a href="{% url 'reservations:approve' reservation.pk %}" class="pill pill--primary">Подтвердить</a>
+                    <a href="{% url 'reservations:reject' reservation.pk %}" class="pill">Отклонить</a>
+                </div>
+            </article>
+        {% empty %}
+            <div class="meta-row">Новых заявок на подтверждении нет.</div>
+        {% endfor %}
+    </div>
+
+    <h2 style="margin-top:28px;">Проблемные брони</h2>
+    <div class="grid">
+        {% for reservation in problem_reservations %}
+            <div class="meta-row">
+                <div class="meta-value">{{ reservation.equipment.name }}</div>
+                <div style="color:var(--muted);">{{ reservation.user.full_name }} · {{ reservation.get_status_display }}</div>
+            </div>
+        {% empty %}
+            <div class="meta-row">Проблемных броней сейчас нет.</div>
+        {% endfor %}
+    </div>
+
+    <h2 style="margin-top:28px;">Оборудование на обслуживании</h2>
+    <div class="grid">
+        {% for equipment in maintenance_equipment %}
+            <div class="meta-row">
+                <div class="meta-value">{{ equipment.name }}</div>
+                <div style="color:var(--muted);">{{ equipment.get_status_display }}</div>
+            </div>
+        {% empty %}
+            <div class="meta-row">Все оборудование доступно.</div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

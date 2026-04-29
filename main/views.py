@@ -12,5 +12,6 @@ def index(request):
                 'Бронирование и подтверждение',
                 'Уведомления и журнал действий',
             ],
+            'authenticated': request.user.is_authenticated,
         },
     )

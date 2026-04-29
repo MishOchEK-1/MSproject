@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль{% endblock %}
+
+{% block content %}
+    <section class="card">
+        <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap;">
+            <div>
+                <h1 style="margin:0 0 8px;">Профиль</h1>
+                <p style="margin:0; color:var(--muted);">
+                    Здесь собраны основные данные пользователя и текущий статус доступа.
+                </p>
+            </div>
+            <a href="{% url 'users:profile-edit' %}" class="pill pill--primary">Редактировать</a>
+        </div>
+
+        <div class="grid grid--two" style="margin-top: 24px;">
+            <div class="meta-list">
+                <div class="meta-row">
+                    <span class="meta-label">ФИО</span>
+                    <span class="meta-value">{{ request.user.full_name }}</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Email</span>
+                    <span class="meta-value">{{ request.user.email }}</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Телефон</span>
+                    <span class="meta-value">{{ request.user.phone }}</span>
+                </div>
+            </div>
+
+            <div class="meta-list">
+                <div class="meta-row">
+                    <span class="meta-label">Роль</span>
+                    <span class="meta-value">{{ request.user.get_role_display }}</span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Инструктаж</span>
+                    <span class="meta-value">
+                        {% if request.user.has_completed_training %}
+                            Пройден
+                        {% else %}
+                            Не пройден
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="meta-row">
+                    <span class="meta-label">Организация</span>
+                    <span class="meta-value">{{ request.user.organization|default:"Не указана" }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="meta-row" style="margin-top: 18px;">
+            <span class="meta-label">Цель визита</span>
+            <span class="meta-value" style="font-weight: 500;">{{ request.user.visit_purpose|default:"Не указана" }}</span>
+        </div>
+    </section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Вход{% endblock %}
+
+{% block content %}
+    <section class="card" style="max-width: 560px;">
+        <h1 style="margin-top: 0;">Вход</h1>
+        <p style="color: var(--muted); margin-top: 0;">
+            Вход выполняется по email и паролю.
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+                <div>
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <div class="errors">{{ field.errors|join:", " }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+            {% if form.non_field_errors %}
+                <div class="errors">{{ form.non_field_errors|join:", " }}</div>
+            {% endif %}
+            <button type="submit" class="button button--primary">Войти</button>
+        </form>
+    </section>
+{% endblock %}

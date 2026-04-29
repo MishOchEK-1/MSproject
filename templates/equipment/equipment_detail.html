@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}{{ equipment.name }}{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap;">
+        <div>
+            <h1 style="margin:0 0 8px;">{{ equipment.name }}</h1>
+            <p style="margin:0; color:var(--muted);">{{ equipment.category.name }} · {{ equipment.inventory_number }}</p>
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <span class="pill">{{ equipment.get_status_display }}</span>
+            <a href="{% url 'reservations:create' equipment.pk %}" class="pill pill--primary">Забронировать</a>
+        </div>
+    </div>
+
+    <div class="grid grid--two" style="margin-top:24px;">
+        <div class="meta-list">
+            <div class="meta-row">
+                <span class="meta-label">Описание</span>
+                <span class="meta-value" style="font-weight:500;">{{ equipment.description|default:"Описание не заполнено." }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">Длительность базового слота</span>
+                <span class="meta-value">{{ equipment.slot_duration_minutes }} минут</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">Инструктаж</span>
+                <span class="meta-value">{% if equipment.requires_training %}Обязателен{% else %}Не требуется{% endif %}</span>
+            </div>
+        </div>
+
+        <div class="meta-list">
+            <div class="meta-row">
+                <span class="meta-label">Ближайшее свободное время</span>
+                <span class="meta-value">
+                    {% if nearest_free_slot %}
+                        {{ nearest_free_slot|date:"d.m.Y H:i" }}
+                    {% else %}
+                        Свободных окон в ближайшие 3 недели не найдено
+                    {% endif %}
+                </span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">Ближайшие брони</span>
+                <span class="meta-value">{{ future_reservations|length }}</span>
+            </div>
+        </div>
+    </div>
+
+    <form method="get" style="margin-top:24px; max-width:320px;">
+        <label for="id_date">День расписания</label>
+        <select id="id_date" name="date">
+            {% for day in day_choices %}
+                <option value="{{ day|date:'Y-m-d' }}" {% if day == selected_day %}selected{% endif %}>{{ day|date:"d.m.Y" }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="button" style="margin-top:10px;">Показать день</button>
+    </form>
+
+    <div class="grid" style="margin-top:24px;">
+        {% for slot in schedule_slots %}
+            <div class="meta-row" style="display:flex; justify-content:space-between; gap:14px; align-items:center;">
+                <div>
+                    <span class="meta-label">{{ selected_day|date:"d.m.Y" }}</span>
+                    <span class="meta-value">{{ slot.hour_label }}</span>
+                </div>
+                <div style="text-align:right;">
+                    {% if slot.reservation %}
+                        <div class="meta-value">{{ slot.reservation.get_status_display }}</div>
+                        <div style="color:var(--muted);">{{ slot.owner_label }}</div>
+                    {% else %}
+                        <div class="meta-value" style="color:var(--success);">Свободно</div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

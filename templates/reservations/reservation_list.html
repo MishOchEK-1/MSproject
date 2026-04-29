@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Мои брони{% endblock %}
+
+{% block content %}
+<section class="card">
+    <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap;">
+        <div>
+            <h1 style="margin:0 0 8px;">Мои брони</h1>
+            <p style="margin:0; color:var(--muted);">Здесь доступны активные брони и история действий.</p>
+        </div>
+        <a href="{% url 'equipment:list' %}" class="pill">К оборудованию</a>
+    </div>
+
+    <h2 style="margin-top:28px;">Активные</h2>
+    <div class="grid">
+        {% for reservation in upcoming %}
+            <article class="meta-row">
+                <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                    <div>
+                        <div class="meta-value">{{ reservation.equipment.name }}</div>
+                        <div style="color:var(--muted);">{{ reservation.start_at|date:"d.m.Y H:i" }} - {{ reservation.end_at|date:"d.m.Y H:i" }}</div>
+                    </div>
+                    <span class="pill">{{ reservation.get_status_display }}</span>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
+                    <a href="{% url 'reservations:extend' reservation.pk %}" class="pill">Продлить</a>
+                    <a href="{% url 'reservations:cancel' reservation.pk %}" class="pill">Отменить</a>
+                </div>
+            </article>
+        {% empty %}
+            <div class="meta-row">Активных броней пока нет.</div>
+        {% endfor %}
+    </div>
+
+    <h2 style="margin-top:28px;">История</h2>
+    <div class="grid">
+        {% for reservation in history %}
+            <article class="meta-row">
+                <div class="meta-value">{{ reservation.equipment.name }}</div>
+                <div style="color:var(--muted);">{{ reservation.start_at|date:"d.m.Y H:i" }} - {{ reservation.end_at|date:"d.m.Y H:i" }}</div>
+                <div style="margin-top:8px;">Статус: {{ reservation.get_status_display }}</div>
+            </article>
+        {% empty %}
+            <div class="meta-row">История пока пуста.</div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

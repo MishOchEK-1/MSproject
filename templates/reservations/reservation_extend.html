@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Продление брони{% endblock %}
+
+{% block content %}
+<section class="card" style="max-width:760px;">
+    <h1 style="margin-top:0;">Продление брони</h1>
+    <p style="color:var(--muted);">
+        {{ reservation.equipment.name }} · до {{ reservation.end_at|date:"d.m.Y H:i" }}
+    </p>
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div>
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                    <div class="errors">{{ field.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        {% if form.non_field_errors %}
+            <div class="errors">{{ form.non_field_errors|join:", " }}</div>
+        {% endif %}
+        <button type="submit" class="button button--primary">Продлить</button>
+    </form>
+</section>
+{% endblock %}

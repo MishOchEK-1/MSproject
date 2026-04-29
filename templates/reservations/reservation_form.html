@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Новая бронь{% endblock %}
+
+{% block content %}
+<section class="card" style="max-width:760px;">
+    <h1 style="margin-top:0;">Новая бронь</h1>
+    <p style="color:var(--muted); margin-top:0;">
+        Оборудование: <strong>{{ equipment.name }}</strong> · базовый слот {{ equipment.slot_duration_minutes }} мин
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div>
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                    <div class="errors">{{ field.errors|join:", " }}</div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        {% if form.non_field_errors %}
+            <div class="errors">{{ form.non_field_errors|join:", " }}</div>
+        {% endif %}
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <button type="submit" class="button button--primary">Создать бронь</button>
+            <a href="{% url 'equipment:detail' equipment.pk %}" class="pill">Назад</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

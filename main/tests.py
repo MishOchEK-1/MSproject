@@ -8,3 +8,4 @@ class MainViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Maker Space')
+        self.assertContains(response, 'Оборудование')
