@@ -112,6 +112,22 @@ class Reservation(models.Model):
     def duration_minutes(self):
         return int(self.duration.total_seconds() // 60)
 
+    @property
+    def requires_manual_approval(self):
+        return not self.user.can_book_without_approval
+
+    def can_be_cancelled_by(self, user):
+        if not user or not user.is_authenticated:
+            return False
+        if user.pk == self.user_id:
+            return self.status in self.ACTIVE_STATUSES
+        return user.can_force_cancel_reservations
+
+    def owner_label_for(self, viewer):
+        if viewer and getattr(viewer, 'is_authenticated', False) and viewer.can_view_reservation_owner(self):
+            return self.user.full_name or self.user.username
+        return 'Скрыто'
+
     def clean(self):
         errors = {}
         now = timezone.now()
