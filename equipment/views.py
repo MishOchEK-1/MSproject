@@ -6,9 +6,95 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView
 
+from reservations.models import Reservation, ReservationStatus
 from reservations.services import sync_reservation_lifecycle
 
-from .models import Equipment, EquipmentCategory, EquipmentStatus
+from .models import Equipment, EquipmentCategory, EquipmentDowntime, EquipmentStatus
+
+BOOKING_STEP_MINUTES = 20
+SCHEDULE_WINDOW_DAYS = 22
+
+
+def align_to_booking_step(moment):
+    aligned = moment.replace(second=0, microsecond=0)
+    remainder = aligned.minute % BOOKING_STEP_MINUTES
+    if remainder:
+        aligned += timedelta(minutes=BOOKING_STEP_MINUTES - remainder)
+    return aligned
+
+
+def format_reservation_window(reservation):
+    local_start = timezone.localtime(reservation.start_at)
+    local_end = timezone.localtime(reservation.end_at)
+    return f'{local_start:%H:%M}-{local_end:%H:%M}'
+
+
+def format_reservation_summary(reservation, viewer, *, include_status=True, include_window=True):
+    parts = []
+    if include_status:
+        parts.append(reservation.get_status_display())
+    if include_window:
+        parts.append(format_reservation_window(reservation))
+    parts.append(reservation.owner_label_for(viewer))
+    return ' · '.join(parts)
+
+
+def get_schedule_window_dates():
+    today = timezone.localdate()
+    return today, today + timedelta(weeks=3)
+
+
+def get_schedule_window_bounds():
+    today, max_day = get_schedule_window_dates()
+    window_start = timezone.make_aware(datetime.combine(today, time.min))
+    window_end = timezone.make_aware(datetime.combine(max_day + timedelta(days=1), time.min))
+    return today, max_day, window_start, window_end
+
+
+def clamp_schedule_day(raw_date, fallback_day):
+    today, max_day = get_schedule_window_dates()
+    if not raw_date:
+        return fallback_day
+    try:
+        selected = datetime.strptime(raw_date, '%Y-%m-%d').date()
+    except ValueError:
+        return fallback_day
+    return min(max(selected, today), max_day)
+
+
+def get_schedule_day_choices():
+    today, _ = get_schedule_window_dates()
+    return [today + timedelta(days=offset) for offset in range(SCHEDULE_WINDOW_DAYS)]
+
+
+def get_first_activity_day(*, reservation_qs, downtime_qs):
+    today, _, window_start, window_end = get_schedule_window_bounds()
+    candidates = []
+
+    reservation = (
+        reservation_qs.filter(
+            status__in=Reservation.ACTIVE_STATUSES,
+            start_at__lt=window_end,
+            end_at__gt=window_start,
+        )
+        .order_by('start_at')
+        .first()
+    )
+    if reservation:
+        candidates.append(timezone.localtime(max(reservation.start_at, window_start)).date())
+
+    downtime = (
+        downtime_qs.filter(
+            start_at__lt=window_end,
+            end_at__gt=window_start,
+        )
+        .order_by('start_at')
+        .first()
+    )
+    if downtime:
+        candidates.append(timezone.localtime(max(downtime.start_at, window_start)).date())
+
+    return min(candidates) if candidates else today
 
 
 class EquipmentListView(LoginRequiredMixin, ListView):
@@ -56,74 +142,114 @@ class EquipmentDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         equipment = self.object
-        selected_day = self._get_selected_day()
+        selected_day = self._get_selected_day(equipment)
         day_start = timezone.make_aware(datetime.combine(selected_day, time(hour=0, minute=0)))
         day_end = day_start + timedelta(days=1)
-        reservations = equipment.reservations.filter(
-            start_at__lt=day_end,
-            end_at__gt=day_start,
-        ).select_related('user')
+        reservations = list(
+            equipment.reservations.filter(
+                status__in=Reservation.ACTIVE_STATUSES,
+                start_at__lt=day_end,
+                end_at__gt=day_start,
+            ).select_related('user').order_by('start_at')
+        )
+        downtimes = list(
+            equipment.downtimes.filter(
+                start_at__lt=day_end,
+                end_at__gt=day_start,
+            ).order_by('start_at')
+        )
         slots = []
         for hour in range(24):
             slot_start = day_start + timedelta(hours=hour)
             slot_end = slot_start + timedelta(hours=1)
-            overlapping = reservations.filter(start_at__lt=slot_end, end_at__gt=slot_start).order_by('start_at').first()
-            slots.append(
-                {
-                    'hour_label': slot_start.strftime('%H:%M'),
-                    'reservation': overlapping,
-                    'status': overlapping.status if overlapping else 'free',
-                    'owner_label': overlapping.owner_label_for(self.request.user) if overlapping else '',
-                }
+            slot_reservations = [
+                item for item in reservations if item.start_at < slot_end and item.end_at > slot_start
+            ]
+            slot_downtime = next(
+                (item for item in downtimes if item.start_at < slot_end and item.end_at > slot_start),
+                None,
             )
+            slots.append(self._build_schedule_slot(slot_start, slot_reservations, slot_downtime))
 
         window_start = timezone.now()
         window_end = window_start + timedelta(weeks=3)
         future_reservations = equipment.reservations.filter(
-            start_at__gte=window_start,
+            status__in=Reservation.ACTIVE_STATUSES,
+            end_at__gte=window_start,
             start_at__lte=window_end,
         ).order_by('start_at')
+        future_reservation_items = [
+            {
+                'reservation': item,
+                'owner_label': item.owner_label_for(self.request.user),
+            }
+            for item in future_reservations[:10]
+        ]
         nearest_free_slot = self._find_nearest_free_slot(equipment, window_start)
 
         context.update(
             {
                 'selected_day': selected_day,
                 'schedule_slots': slots,
-                'future_reservations': future_reservations[:10],
+                'future_reservations': future_reservation_items,
                 'nearest_free_slot': nearest_free_slot,
-                'day_choices': self._build_day_choices(selected_day),
+                'day_choices': self._build_day_choices(),
             }
         )
         return context
 
-    def _get_selected_day(self):
-        raw_date = self.request.GET.get('date')
-        today = timezone.localdate()
-        if not raw_date:
-            return today
-        try:
-            selected = datetime.strptime(raw_date, '%Y-%m-%d').date()
-        except ValueError:
-            return today
-        max_day = today + timedelta(weeks=3)
-        if selected < today:
-            return today
-        if selected > max_day:
-            return max_day
-        return selected
+    def _get_selected_day(self, equipment):
+        fallback_day = get_first_activity_day(
+            reservation_qs=equipment.reservations.all(),
+            downtime_qs=equipment.downtimes.all(),
+        )
+        return clamp_schedule_day(self.request.GET.get('date'), fallback_day)
 
-    def _build_day_choices(self, selected_day):
-        today = timezone.localdate()
-        return [today + timedelta(days=offset) for offset in range(0, 21)]
+    def _build_day_choices(self):
+        return get_schedule_day_choices()
+
+    def _build_schedule_slot(self, slot_start, slot_reservations, slot_downtime):
+        if slot_downtime:
+            return {
+                'hour_label': slot_start.strftime('%H:%M'),
+                'status': 'blocked',
+                'headline': 'Недоступно',
+                'detail_lines': [slot_downtime.reason],
+            }
+
+        if not slot_reservations:
+            return {
+                'hour_label': slot_start.strftime('%H:%M'),
+                'status': 'free',
+                'headline': 'Свободно',
+                'detail_lines': [],
+            }
+
+        detail_lines = [
+            format_reservation_summary(item, self.request.user, include_window=len(slot_reservations) > 1)
+            for item in slot_reservations
+        ]
+        approved_exists = any(item.status == ReservationStatus.APPROVED for item in slot_reservations)
+        headline = (
+            format_reservation_window(slot_reservations[0])
+            if len(slot_reservations) == 1
+            else f'Броней в часе: {len(slot_reservations)}'
+        )
+        return {
+            'hour_label': slot_start.strftime('%H:%M'),
+            'status': ReservationStatus.APPROVED if approved_exists else ReservationStatus.PENDING,
+            'headline': headline,
+            'detail_lines': detail_lines,
+        }
 
     def _find_nearest_free_slot(self, equipment, start_from):
-        pointer = start_from.replace(minute=0, second=0, microsecond=0)
+        pointer = align_to_booking_step(start_from)
         horizon = start_from + timedelta(weeks=3)
         duration = timedelta(minutes=equipment.slot_duration_minutes)
         while pointer < horizon:
             candidate_end = pointer + duration
             has_conflict = equipment.reservations.filter(
-                status__in=('pending', 'approved'),
+                status__in=Reservation.ACTIVE_STATUSES,
                 start_at__lt=candidate_end,
                 end_at__gt=pointer,
             ).exists()
@@ -133,7 +259,7 @@ class EquipmentDetailView(LoginRequiredMixin, DetailView):
             ).exists()
             if not has_conflict and not blocked and equipment.is_bookable:
                 return pointer
-            pointer += timedelta(hours=1)
+            pointer += timedelta(minutes=BOOKING_STEP_MINUTES)
         return None
 
 
@@ -143,7 +269,6 @@ class EquipmentScheduleView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         sync_reservation_lifecycle()
         context = super().get_context_data(**kwargs)
-        selected_day = self._get_selected_day()
         queryset = Equipment.objects.select_related('category').all()
         query = self.request.GET.get('q', '').strip()
         category = self.request.GET.get('category', '').strip()
@@ -159,6 +284,7 @@ class EquipmentScheduleView(LoginRequiredMixin, TemplateView):
             queryset = queryset.filter(category_id=category)
         if status:
             queryset = queryset.filter(status=status)
+        selected_day = self._get_selected_day(queryset)
 
         day_start = timezone.make_aware(datetime.combine(selected_day, time(hour=0, minute=0)))
         day_end = day_start + timedelta(days=1)
@@ -168,6 +294,7 @@ class EquipmentScheduleView(LoginRequiredMixin, TemplateView):
         for equipment in queryset:
             reservations = list(
                 equipment.reservations.filter(
+                    status__in=Reservation.ACTIVE_STATUSES,
                     start_at__lt=day_end,
                     end_at__gt=day_start,
                 ).select_related('user').order_by('start_at')
@@ -178,10 +305,9 @@ class EquipmentScheduleView(LoginRequiredMixin, TemplateView):
             for hour in range(24):
                 slot_start = day_start + timedelta(hours=hour)
                 slot_end = slot_start + timedelta(hours=1)
-                reservation = next(
-                    (item for item in reservations if item.start_at < slot_end and item.end_at > slot_start),
-                    None,
-                )
+                slot_reservations = [
+                    item for item in reservations if item.start_at < slot_end and item.end_at > slot_start
+                ]
                 downtime = next(
                     (item for item in downtimes if item.start_at < slot_end and item.end_at > slot_start),
                     None,
@@ -190,10 +316,18 @@ class EquipmentScheduleView(LoginRequiredMixin, TemplateView):
                     slot_type = 'blocked'
                     label = 'Недоступно'
                     detail = downtime.reason
-                elif reservation:
-                    slot_type = reservation.status
-                    label = reservation.get_status_display()
-                    detail = reservation.owner_label_for(self.request.user)
+                elif slot_reservations:
+                    approved_exists = any(item.status == ReservationStatus.APPROVED for item in slot_reservations)
+                    slot_type = ReservationStatus.APPROVED if approved_exists else ReservationStatus.PENDING
+                    label = (
+                        format_reservation_window(slot_reservations[0])
+                        if len(slot_reservations) == 1
+                        else f'{len(slot_reservations)} брони'
+                    )
+                    detail = '; '.join(
+                        format_reservation_summary(item, self.request.user, include_window=len(slot_reservations) > 1)
+                        for item in slot_reservations
+                    )
                     busy_hours += 1
                 else:
                     slot_type = 'free'
@@ -219,21 +353,16 @@ class EquipmentScheduleView(LoginRequiredMixin, TemplateView):
                 'categories': EquipmentCategory.objects.all(),
                 'status_choices': EquipmentStatus.choices,
                 'selected_day': selected_day,
-                'day_choices': [timezone.localdate() + timedelta(days=offset) for offset in range(21)],
+                'day_choices': get_schedule_day_choices(),
                 'hour_labels': hour_labels,
                 'schedule_rows': schedule_rows,
             }
         )
         return context
 
-    def _get_selected_day(self):
-        raw_date = self.request.GET.get('date')
-        today = timezone.localdate()
-        if not raw_date:
-            return today
-        try:
-            selected = datetime.strptime(raw_date, '%Y-%m-%d').date()
-        except ValueError:
-            return today
-        max_day = today + timedelta(weeks=3)
-        return min(max(selected, today), max_day)
+    def _get_selected_day(self, equipment_queryset):
+        fallback_day = get_first_activity_day(
+            reservation_qs=Reservation.objects.filter(equipment__in=equipment_queryset),
+            downtime_qs=EquipmentDowntime.objects.filter(equipment__in=equipment_queryset),
+        )
+        return clamp_schedule_day(self.request.GET.get('date'), fallback_day)

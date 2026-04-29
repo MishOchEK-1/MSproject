@@ -6,16 +6,19 @@
     <title>{% block title %}Maker Space{% endblock %}</title>
     <style>
         :root {
-            --bg: #f5f1e8;
-            --surface: #fffaf2;
+            --bg: #f4efe6;
+            --surface: #fff9f0;
             --surface-strong: #ffffff;
-            --ink: #1f2933;
-            --muted: #52606d;
-            --accent: #0f766e;
-            --accent-soft: #cceee8;
-            --border: #d8cdbd;
+            --ink: #1f2937;
+            --muted: #5f6c7a;
+            --accent: #176b5f;
+            --accent-soft: #d6efe9;
+            --accent-strong: #0e4f47;
+            --border: #d9ceb8;
             --danger: #b42318;
             --success: #027a48;
+            --warning: #b25a12;
+            --shadow: 0 24px 60px rgba(31, 41, 51, 0.08);
         }
 
         * {
@@ -24,10 +27,11 @@
 
         body {
             margin: 0;
-            font-family: "Segoe UI", Tahoma, sans-serif;
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
             color: var(--ink);
             background:
-                radial-gradient(circle at top left, #fff7df 0, transparent 35%),
+                radial-gradient(circle at top left, #fff7df 0, transparent 34%),
+                radial-gradient(circle at right 10%, rgba(23, 107, 95, 0.09) 0, transparent 28%),
                 linear-gradient(180deg, #f3ece0 0%, var(--bg) 100%);
         }
 
@@ -39,7 +43,7 @@
         .layout {
             width: min(1120px, calc(100% - 32px));
             margin: 0 auto;
-            padding: 20px 0 40px;
+            padding: 20px 0 48px;
         }
 
         .nav {
@@ -50,14 +54,23 @@
             margin-bottom: 24px;
             padding: 14px 18px;
             border: 1px solid var(--border);
-            border-radius: 20px;
+            border-radius: 24px;
             background: rgba(255, 250, 242, 0.88);
             backdrop-filter: blur(8px);
+            box-shadow: 0 12px 34px rgba(31, 41, 51, 0.06);
         }
 
         .nav__brand {
+            display: grid;
+            gap: 4px;
             font-weight: 800;
-            letter-spacing: 0.02em;
+            letter-spacing: 0.03em;
+        }
+
+        .nav__brand small {
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 600;
         }
 
         .nav__links {
@@ -86,6 +99,12 @@
             border: 1px solid var(--border);
             background: var(--surface-strong);
             cursor: pointer;
+            transition: transform 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+        }
+
+        .pill:hover,
+        .button:hover {
+            transform: translateY(-1px);
         }
 
         .button--primary,
@@ -95,12 +114,19 @@
             border-color: var(--accent);
         }
 
+        .button--secondary,
+        .pill--secondary {
+            background: var(--accent-soft);
+            border-color: #a7d8cd;
+            color: var(--accent-strong);
+        }
+
         .card {
             padding: 28px;
             border: 1px solid var(--border);
             border-radius: 24px;
             background: rgba(255, 250, 242, 0.92);
-            box-shadow: 0 24px 60px rgba(31, 41, 51, 0.08);
+            box-shadow: var(--shadow);
         }
 
         .messages {
@@ -165,8 +191,64 @@
             gap: 18px;
         }
 
+        .grid--three {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
         .grid--two {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .page-header h1,
+        .page-header h2,
+        .page-header h3 {
+            margin: 0;
+        }
+
+        .page-header p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            max-width: 64ch;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 14px;
+        }
+
+        .stat-card {
+            padding: 18px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(247, 241, 231, 0.98));
+        }
+
+        .stat-card strong {
+            display: block;
+            font-size: 1.7rem;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .stat-card span {
+            color: var(--muted);
+            font-size: 0.94rem;
         }
 
         .meta-list {
@@ -179,6 +261,11 @@
             border: 1px solid var(--border);
             border-radius: 16px;
             background: var(--surface-strong);
+        }
+
+        .meta-row p:last-child,
+        .meta-row div:last-child {
+            margin-bottom: 0;
         }
 
         .meta-label {
@@ -203,18 +290,23 @@
             border: 1px solid transparent;
         }
 
-        .status-badge--success,
-        .status-badge--approved {
+        .status-badge--success {
             color: #055c3a;
             background: #d6f5e8;
             border-color: #9ad5b2;
         }
 
+        .status-badge--approved {
+            color: #8a1f17;
+            background: #fee4e2;
+            border-color: #f2b8b5;
+        }
+
         .status-badge--warning,
         .status-badge--pending {
-            color: #8a4b08;
-            background: #fce6c8;
-            border-color: #ebc589;
+            color: #9f1239;
+            background: #ffe4e6;
+            border-color: #fda4af;
         }
 
         .status-badge--blocked,
@@ -224,6 +316,12 @@
             border-color: #f2b8b5;
         }
 
+        .status-badge--maintenance {
+            color: #8a4b08;
+            background: #fff0d3;
+            border-color: #f2d19a;
+        }
+
         .status-badge--free {
             color: #0f766e;
             background: #dff7f3;
@@ -231,14 +329,16 @@
         }
 
         .schedule-slot {
-            min-width: 72px;
+            min-width: 84px;
             min-height: 44px;
             padding: 8px;
             border-radius: 12px;
             text-align: center;
             font-size: 0.85rem;
             font-weight: 700;
+            line-height: 1.2;
             border: 1px solid transparent;
+            overflow-wrap: anywhere;
         }
 
         .schedule-slot--free {
@@ -248,15 +348,15 @@
         }
 
         .schedule-slot--approved {
-            color: #055c3a;
-            background: #d6f5e8;
-            border-color: #9ad5b2;
+            color: #8a1f17;
+            background: #fee4e2;
+            border-color: #f2b8b5;
         }
 
         .schedule-slot--pending {
-            color: #8a4b08;
-            background: #fce6c8;
-            border-color: #ebc589;
+            color: #9f1239;
+            background: #ffe4e6;
+            border-color: #fda4af;
         }
 
         .schedule-slot--blocked,
@@ -268,8 +368,100 @@
             border-color: #f2b8b5;
         }
 
+        .section-stack {
+            display: grid;
+            gap: 24px;
+        }
+
+        .list-stack {
+            display: grid;
+            gap: 12px;
+        }
+
+        .inline-note {
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .text-muted {
+            color: var(--muted);
+        }
+
+        .empty-state {
+            padding: 16px 18px;
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            color: var(--muted);
+            background: rgba(255, 255, 255, 0.65);
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 10px;
+        }
+
+        .table th {
+            text-align: left;
+            color: var(--muted);
+            font-size: 0.92rem;
+            padding: 0 12px 4px;
+        }
+
+        .table td {
+            padding: 14px 12px;
+            background: rgba(255, 255, 255, 0.92);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+
+        .table td:first-child {
+            border-left: 1px solid var(--border);
+            border-radius: 16px 0 0 16px;
+        }
+
+        .table td:last-child {
+            border-right: 1px solid var(--border);
+            border-radius: 0 16px 16px 0;
+        }
+
+        .copy-box {
+            min-height: 220px;
+            font-family: "SFMono-Regular", Consolas, monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+        }
+
+        .content-stack {
+            display: grid;
+            gap: 24px;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 24px;
+        }
+
+        .pagination__label {
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
         @media (max-width: 760px) {
             .grid--two {
+                grid-template-columns: 1fr;
+            }
+
+            .grid--three {
                 grid-template-columns: 1fr;
             }
 
@@ -277,13 +469,25 @@
                 align-items: flex-start;
                 flex-direction: column;
             }
+
+            .card {
+                padding: 22px;
+                border-radius: 20px;
+            }
+
+            .table {
+                min-width: 720px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="layout">
         <nav class="nav">
-            <a href="{% url 'index' %}" class="nav__brand">Maker Space</a>
+            <a href="{% url 'index' %}" class="nav__brand">
+                <span>Maker Space</span>
+                <small>Панель бронирования и управления цехом</small>
+            </a>
             <div class="nav__links">
                 {% if request.user.is_authenticated %}
                     <a class="pill" href="{% url 'equipment:list' %}">Оборудование</a>
@@ -295,6 +499,9 @@
                     {% if request.user.can_review_reservations %}
                         <a class="pill" href="{% url 'reservations:staff-dashboard' %}">Панель персонала</a>
                         <a class="pill" href="{% url 'users:training-dashboard' %}">Инструктаж</a>
+                    {% endif %}
+                    {% if request.user.can_view_audit_logs %}
+                        <a class="pill" href="{% url 'audit:list' %}">Логи</a>
                     {% endif %}
                     <a class="pill" href="{% url 'users:profile' %}">Профиль</a>
                     <a class="pill" href="{% url 'users:profile-edit' %}">Редактировать профиль</a>
@@ -319,5 +526,6 @@
 
         {% block content %}{% endblock %}
     </div>
+    {% block extra_scripts %}{% endblock %}
 </body>
 </html>
