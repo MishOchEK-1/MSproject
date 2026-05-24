@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maker Space MVP - Демо</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .feature-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+        }
+        
+        .feature-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .feature-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .roles-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .roles-table th,
+        .roles-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .roles-table th {
+            background: #667eea;
+            color: white;
+        }
+        
+        .roles-table tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .demo-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: 2px solid #667eea;
+        }
+        
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tech-stack {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .tech-item {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .demo-accounts {
+            background: #f0f7ff;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            margin: 20px 0;
+        }
+        
+        .demo-accounts h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .account-item {
+            background: white;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid #ddd;
+        }
+        
+        .account-item strong {
+            color: #667eea;
+        }
+        
+        .password {
+            color: #764ba2;
+            font-weight: bold;
+        }
+        
+        footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+        
+        .screenshot-area {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 20px 0;
+            min-height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+        }
+        
+        .info-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        
+        .info-box strong {
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏭 Maker Space MVP</h1>
+            <p>Веб-приложение для управления университетским Maker Space</p>
+        </header>
+        
+        <div class="content">
+            <!-- Об приложении -->
+            <div class="section">
+                <h2>📋 Об приложении</h2>
+                <p>
+                    Это комплексное веб-приложение для управления работой университетского Maker Space. 
+                    Система обеспечивает учёт пользователей, контроль допуска к оборудованию на основе инструктажа, 
+                    резервирование оборудования и ведение полного аудита действий.
+                </p>
+                <div class="info-box">
+                    <strong>⚠️ Важно:</strong> Это демо-версия показывает структуру и возможности проекта. 
+                    Для полноценного использования требуется локальное развёртывание Django приложения.
+                </div>
+            </div>
+            
+            <!-- Основные возможности -->
+            <div class="section">
+                <h2>✨ Основные возможности</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>👤 Система ролей</h3>
+                        <p>4 типа пользователей: Guest, Student, Staff, Admin с разными уровнями доступа</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📅 Резервирование</h3>
+                        <p>Бронирование оборудования с шагом 20 минут, макс. 24 часа вперёд на 3 недели</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📊 Расписание</h3>
+                        <p>Общее расписание загрузки оборудования по дням и часам</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔐 Инструктаж</h3>
+                        <p>Контроль доступа к оборудованию на основе пройденного обучения</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>🔔 Уведомления</h3>
+                        <p>Внутренняя система уведомлений по событиям бронирования</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>📝 Аудит</h3>
+                        <p>Полный журнал всех действий пользователей и системы</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Роли и доступ -->
+            <div class="section">
+                <h2>🔑 Роли и доступ</h2>
+                <table class="roles-table">
+                    <thead>
+                        <tr>
+                            <th>Роль</th>
+                            <th>Описание</th>
+                            <th>Что может делать</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Guest</strong></td>
+                            <td>Гость</td>
+                            <td>Просмотр оборудования, бронирование без инструктажа</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Student</strong></td>
+                            <td>Студент</td>
+                            <td>Полное бронирование после инструктажа, просмотр своих броней</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Staff</strong></td>
+                            <td>Сотрудник</td>
+                            <td>Автоподтверждение броней, проверка заявок, управление инструктажем</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Admin</strong></td>
+                            <td>Администратор</td>
+                            <td>Все права Staff + админ-панель Django, управление всеми данными</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Технологический стек -->
+            <div class="section">
+                <h2>🛠️ Технологический стек</h2>
+                <div class="tech-stack">
+                    <div class="tech-item">Python 3.x</div>
+                    <div class="tech-item">Django 6.0.4</div>
+                    <div class="tech-item">SQLite</div>
+                    <div class="tech-item">Django Templates</div>
+                    <div class="tech-item">Class-Based Views</div>
+                    <div class="tech-item">Django Admin</div>
+                </div>
+            </div>
+            
+            <!-- Демо аккаунты -->
+            <div class="section">
+                <h2>👥 Демо аккаунты</h2>
+                <div class="demo-accounts">
+                    <h3>Доступные учётные записи:</h3>
+                    <div class="account-item">
+                        <strong>Staff:</strong> demo.staff@edu.omsk.ru | <span class="password">demo-pass-123</span>
+                    </div>
+                    <div class="account-item">
+                        <strong>Student 1:</strong> demo.student1@edu.omsk.ru | <span class="password">demo-pass-123</span>
+                    </div>
+                    <div class="account-item">
+                        <strong>Student 2:</strong> demo.student2@edu.omsk.ru | <span class="password">demo-pass-123</span>
+                    </div>
+                    <div class="account-item">
+                        <strong>Guest:</strong> guest.demo1@example.com | <span class="password">demo-pass-123</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Правила резервирования -->
+            <div class="section">
+                <h2>📋 Правила резервирования</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>Временные рамки</h3>
+                        <p>
+                            • Мин. длит.: 20 мин<br>
+                            • Макс. длит.: 24 часа<br>
+                            • Шаг времени: 20 мин<br>
+                            • Макс. вперёд: 3 недели
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Процесс подтверждения</h3>
+                        <p>
+                            • Обычные пользователи: ручное подтверждение<br>
+                            • Staff/Admin: автоматическое подтверждение<br>
+                            • Таймаут без ответа: 7 дней
+                        </p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Ограничения</h3>
+                        <p>
+                            • Запрещены пересечения броней<br>
+                            • Недоступно на downtime периодах<br>
+                            • Требуется инструктаж для ряда оборудования
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Модули проекта -->
+            <div class="section">
+                <h2>🔧 Модули проекта</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <h3>Users</h3>
+                        <p>Регистрация, логин, профиль, роли, управление инструктажем</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Equipment</h3>
+                        <p>Каталог оборудования, категории, расписание, downtime периоды</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Reservations</h3>
+                        <p>Создание, подтверждение, отклонение, отмена и продление броней</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Notifications</h3>
+                        <p>Внутренний центр уведомлений по событиям системы</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Audit</h3>
+                        <p>Журнал всех действий пользователей и системы</p>
+                    </div>
+                    <div class="feature-card">
+                        <h3>Main</h3>
+                        <p>Главная страница и базовые сущности приложения</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Ссылки -->
+            <div class="section">
+                <h2>🔗 Полная информация</h2>
+                <p>Для получения полной информации о проекте и инструкций по развёртыванию:</p>
+                <div class="demo-buttons">
+                    <a href="https://github.com/MishOchEK-1/MSproject" class="btn btn-primary" target="_blank">
+                        📱 GitHub репозиторий
+                    </a>
+                    <a href="https://github.com/MishOchEK-1/MSproject/blob/main/README.md" class="btn btn-secondary" target="_blank">
+                        📖 Полная документация
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Быстрый старт -->
+            <div class="section">
+                <h2>⚡ Быстрый старт (локально)</h2>
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto;">
+                    <pre style="font-family: monospace; color: #333;"><code># 1. Клонирование
+git clone https://github.com/MishOchEK-1/MSproject.git
+cd MSproject
+
+# 2. Виртуальное окружение
+python3 -m venv .venv
+source .venv/bin/activate  # или .venv\Scripts\activate на Windows
+
+# 3. Установка зависимостей
+pip install -r requirements.txt
+
+# 4. Миграции
+python manage.py migrate
+
+# 5. Демо-данные
+python manage.py seed_demo_activity --days 12
+
+# 6. Запуск
+python manage.py runserver
+
+# 7. Откройте http://127.0.0.1:8000/</code></pre>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Maker Space MVP © 2026 | <a href="https://github.com/MishOchEK-1" target="_blank" style="color: #667eea;">@MishOchEK-1</a></p>
+            <p>Команда: Михаил Романчев (лидер) · Тилек Камалов · Айдын Рахматулин · Доолот Русланов · Наиля Мирбекова</p>
+        </footer>
+    </div>
+</body>
+</html>
