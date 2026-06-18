@@ -11,7 +11,9 @@
         </div>
         <div style="display:flex; gap:12px; flex-wrap:wrap;">
             <span class="status-badge status-badge--{% if equipment.status == 'available' %}free{% elif equipment.status == 'maintenance' %}warning{% else %}danger{% endif %}">{{ equipment.get_status_display }}</span>
-            <a href="{% url 'reservations:create' equipment.pk %}" class="pill pill--primary">Забронировать</a>
+            {% if can_start_booking %}
+                <a href="{% url 'reservations:create' equipment.pk %}" class="pill pill--primary">Забронировать</a>
+            {% endif %}
             <a href="{% url 'equipment:schedule' %}?date={{ selected_day|date:'Y-m-d' }}" class="pill">Общая загрузка</a>
         </div>
     </div>
@@ -60,22 +62,57 @@
         <button type="submit" class="button" style="margin-top:10px;">Показать день</button>
     </form>
 
-    <div class="grid" style="margin-top:24px;">
+    <div class="page-header" style="margin-top:32px;">
+        <div>
+            <h2 style="margin:0 0 8px;">Часовой обзор дня</h2>
+            <p style="margin:0; color:var(--muted);">
+                Слоты остаются обзорными. Для свободного окна можно сразу открыть форму бронирования с уже подставленным временем.
+            </p>
+        </div>
+        <div class="toolbar">
+            {% if nearest_free_slot and can_start_booking %}
+                <a href="{% url 'reservations:create' equipment.pk %}?start_at={{ nearest_free_slot|date:'Y-m-d\\TH:i' }}" class="pill pill--primary">Ближайшее свободное окно</a>
+            {% endif %}
+            <a href="{% url 'equipment:schedule' %}?date={{ selected_day|date:'Y-m-d' }}" class="pill">Смотреть в общей загрузке</a>
+        </div>
+    </div>
+
+    <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top:24px;">
         {% for slot in schedule_slots %}
-            <div class="meta-row" style="display:flex; justify-content:space-between; gap:14px; align-items:center;">
-                <div>
-                    <span class="meta-label">{{ selected_day|date:"d.m.Y" }}</span>
-                    <span class="meta-value">{{ slot.hour_label }}</span>
-                </div>
-                <div style="text-align:right;">
-                    {% if slot.reservation %}
-                        <div><span class="status-badge status-badge--{% if slot.status == 'approved' %}approved{% else %}pending{% endif %}">{{ slot.reservation.get_status_display }}</span></div>
-                        <div style="color:var(--muted); margin-top:6px;">{{ slot.owner_label }}</div>
+            <article class="meta-row" style="display:grid; gap:12px; align-content:start;">
+                <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start;">
+                    <div>
+                        <span class="meta-label">{{ selected_day|date:"d.m.Y" }}</span>
+                        <div class="meta-value">{{ slot.hour_label }}</div>
+                    </div>
+                    {% if slot.status == 'free' %}
+                        <span class="status-badge status-badge--free">Свободно</span>
+                    {% elif slot.status == 'blocked' %}
+                        <span class="status-badge status-badge--blocked">Недоступно</span>
                     {% else %}
-                        <div><span class="status-badge status-badge--free">Свободно</span></div>
+                        <span class="status-badge status-badge--{% if slot.status == 'approved' %}approved{% else %}pending{% endif %}">{% if slot.status == 'approved' %}Подтверждена{% else %}На подтверждении{% endif %}</span>
                     {% endif %}
                 </div>
-            </div>
+
+                <div>
+                    <div class="meta-value" style="font-size:1.02rem;">{{ slot.headline }}</div>
+                    {% if slot.detail_lines %}
+                        <div class="list-stack" style="margin-top:10px;">
+                            {% for detail in slot.detail_lines %}
+                                <div class="inline-note">{{ detail }}</div>
+                            {% endfor %}
+                        </div>
+                    {% elif slot.status == 'free' %}
+                        <div class="inline-note" style="margin-top:10px;">Окно доступно для старта бронирования в этот час.</div>
+                    {% endif %}
+                </div>
+
+                {% if slot.booking_url %}
+                    <div>
+                        <a href="{{ slot.booking_url }}" class="pill pill--primary">Забронировать с {{ slot.hour_label }}</a>
+                    </div>
+                {% endif %}
+            </article>
         {% endfor %}
     </div>
 </section>

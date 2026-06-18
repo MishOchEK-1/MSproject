@@ -77,9 +77,15 @@
                         <td style="padding:10px 12px; background:#fff; border-top:1px solid var(--border); border-bottom:1px solid var(--border);">{{ row.busy_hours }}</td>
                         {% for slot in row.slots %}
                             <td style="padding:6px; background:#fff; border-top:1px solid var(--border); border-bottom:1px solid var(--border);">
-                                <div class="schedule-slot schedule-slot--{{ slot.type }}" title="{{ slot.label }}{% if slot.detail %} · {{ slot.detail }}{% endif %}">
-                                    <span>{{ slot.label|truncatechars:10 }}</span>
-                                </div>
+                                {% if slot.booking_url %}
+                                    <a href="{{ slot.booking_url }}" class="schedule-slot schedule-slot--{{ slot.type }}" title="Начать бронирование: {{ slot.label }}{% if slot.detail %} · {{ slot.detail }}{% endif %}">
+                                        <span>{{ slot.label|truncatechars:10 }}</span>
+                                    </a>
+                                {% else %}
+                                    <div class="schedule-slot schedule-slot--{{ slot.type }}" title="{{ slot.label }}{% if slot.detail %} · {{ slot.detail }}{% endif %}">
+                                        <span>{{ slot.label|truncatechars:10 }}</span>
+                                    </div>
+                                {% endif %}
                             </td>
                         {% endfor %}
                     </tr>

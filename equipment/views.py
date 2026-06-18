@@ -2,6 +2,7 @@ from datetime import datetime, time, timedelta
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
+from django.urls import reverse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.views.generic import DetailView, ListView, TemplateView
@@ -37,6 +38,10 @@ def format_reservation_summary(reservation, viewer, *, include_status=True, incl
         parts.append(format_reservation_window(reservation))
     parts.append(reservation.owner_label_for(viewer))
     return ' · '.join(parts)
+
+
+def format_datetime_local_value(moment):
+    return timezone.localtime(moment).strftime('%Y-%m-%dT%H:%M')
 
 
 def get_schedule_window_dates():
@@ -186,6 +191,7 @@ class EquipmentDetailView(LoginRequiredMixin, DetailView):
             for item in future_reservations[:10]
         ]
         nearest_free_slot = self._find_nearest_free_slot(equipment, window_start)
+        can_start_booking = equipment.is_bookable and self.request.user.can_book_equipment(equipment)
 
         context.update(
             {
@@ -194,6 +200,7 @@ class EquipmentDetailView(LoginRequiredMixin, DetailView):
                 'future_reservations': future_reservation_items,
                 'nearest_free_slot': nearest_free_slot,
                 'day_choices': self._build_day_choices(),
+                'can_start_booking': can_start_booking,
             }
         )
         return context
@@ -215,14 +222,23 @@ class EquipmentDetailView(LoginRequiredMixin, DetailView):
                 'status': 'blocked',
                 'headline': 'Недоступно',
                 'detail_lines': [slot_downtime.reason],
+                'booking_url': None,
             }
 
         if not slot_reservations:
+            booking_url = None
+            if self.object.is_bookable and self.request.user.can_book_equipment(self.object):
+                start_at_value = format_datetime_local_value(slot_start)
+                booking_url = (
+                    f"{reverse('reservations:create', args=[self.object.pk])}"
+                    f"?start_at={start_at_value}"
+                )
             return {
                 'hour_label': slot_start.strftime('%H:%M'),
                 'status': 'free',
                 'headline': 'Свободно',
                 'detail_lines': [],
+                'booking_url': booking_url,
             }
 
         detail_lines = [
@@ -240,6 +256,7 @@ class EquipmentDetailView(LoginRequiredMixin, DetailView):
             'status': ReservationStatus.APPROVED if approved_exists else ReservationStatus.PENDING,
             'headline': headline,
             'detail_lines': detail_lines,
+            'booking_url': None,
         }
 
     def _find_nearest_free_slot(self, equipment, start_from):
@@ -333,11 +350,23 @@ class EquipmentScheduleView(LoginRequiredMixin, TemplateView):
                     slot_type = 'free'
                     label = 'Свободно'
                     detail = ''
+                booking_url = None
+                if (
+                    slot_type == 'free'
+                    and equipment.is_bookable
+                    and self.request.user.can_book_equipment(equipment)
+                ):
+                    start_at_value = format_datetime_local_value(slot_start)
+                    booking_url = (
+                        f"{reverse('reservations:create', args=[equipment.pk])}"
+                        f"?start_at={start_at_value}"
+                    )
                 row_slots.append(
                     {
                         'type': slot_type,
                         'label': label,
                         'detail': detail,
+                        'booking_url': booking_url,
                     }
                 )
             schedule_rows.append(

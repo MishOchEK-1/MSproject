@@ -8,6 +8,9 @@
     <p style="color:var(--muted);">
         {{ reservation.equipment.name }} · до {{ reservation.end_at|date:"d.m.Y H:i" }}
     </p>
+    <p style="color:var(--muted); margin-top:-4px;">
+        Итоговая длительность брони не может быть меньше базового слота и, если она больше слота, должна быть кратна 10 минутам.
+    </p>
     <form method="post">
         {% csrf_token %}
         {% for field in form %}

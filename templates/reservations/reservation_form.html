@@ -8,6 +8,9 @@
     <p style="color:var(--muted); margin-top:0;">
         Оборудование: <strong>{{ equipment.name }}</strong> · базовый слот {{ equipment.slot_duration_minutes }} мин
     </p>
+    <p style="color:var(--muted); margin-top:-4px;">
+        Минимальная длительность равна базовому слоту. Если брать больше времени, длительность должна быть кратна 10 минутам.
+    </p>
 
     <form method="post">
         {% csrf_token %}

@@ -456,6 +456,186 @@
             font-size: 0.92rem;
         }
 
+        .reservation-calendar {
+            display: grid;
+            gap: 24px;
+        }
+
+        .reservation-calendar__hero {
+            display: grid;
+            gap: 16px;
+            padding: 20px 22px;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            background:
+                radial-gradient(circle at top right, rgba(23, 107, 95, 0.12), transparent 28%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 239, 227, 0.96));
+        }
+
+        .reservation-calendar__hero-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .reservation-calendar__range {
+            display: grid;
+            gap: 6px;
+        }
+
+        .reservation-calendar__range strong {
+            font-size: 1.35rem;
+            line-height: 1.1;
+        }
+
+        .reservation-calendar__stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+        }
+
+        .reservation-calendar__stat {
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .reservation-calendar__stat strong {
+            display: block;
+            font-size: 1.4rem;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .reservation-calendar__nav {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .reservation-calendar__board {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .reservation-calendar__day {
+            display: grid;
+            gap: 14px;
+            align-content: start;
+            min-height: 320px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            background: rgba(255, 255, 255, 0.72);
+        }
+
+        .reservation-calendar__day--today {
+            border-color: #8ecfc3;
+            background:
+                linear-gradient(180deg, rgba(223, 247, 243, 0.9), rgba(255, 255, 255, 0.92));
+            box-shadow: 0 0 0 2px rgba(23, 107, 95, 0.08);
+        }
+
+        .reservation-calendar__day-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .reservation-calendar__day-name {
+            display: grid;
+            gap: 6px;
+        }
+
+        .reservation-calendar__day-name strong {
+            font-size: 1rem;
+            line-height: 1.1;
+        }
+
+        .reservation-calendar__count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            min-height: 36px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: var(--surface-strong);
+            border: 1px solid var(--border);
+            font-weight: 700;
+            color: var(--accent-strong);
+        }
+
+        .reservation-calendar__slots {
+            display: grid;
+            gap: 10px;
+        }
+
+        .reservation-calendar__slot {
+            display: grid;
+            gap: 10px;
+            padding: 12px;
+            border: 1px solid rgba(217, 206, 184, 0.9);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.92);
+        }
+
+        .reservation-calendar__slot-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .reservation-calendar__time {
+            display: inline-flex;
+            align-items: center;
+            min-height: 30px;
+            padding: 0 10px;
+            border-radius: 999px;
+            background: var(--accent-soft);
+            color: var(--accent-strong);
+            font-size: 0.88rem;
+            font-weight: 700;
+        }
+
+        .reservation-calendar__actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .reservation-calendar__actions .pill {
+            min-height: 36px;
+            padding: 0 12px;
+        }
+
+        .reservation-calendar__empty {
+            min-height: 100%;
+            display: grid;
+            align-content: center;
+        }
+
+        .reservation-history {
+            display: grid;
+            gap: 12px;
+        }
+
+        .reservation-history__item {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
         @media (max-width: 760px) {
             .grid--two {
                 grid-template-columns: 1fr;
@@ -473,6 +653,14 @@
             .card {
                 padding: 22px;
                 border-radius: 20px;
+            }
+
+            .reservation-calendar__board {
+                grid-template-columns: 1fr;
+            }
+
+            .reservation-calendar__day {
+                min-height: 0;
             }
 
             .table {

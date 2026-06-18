@@ -3,6 +3,8 @@ from datetime import timedelta
 from django import forms
 from django.utils import timezone
 
+from .models import Reservation
+
 
 class ReservationCreateForm(forms.Form):
     start_at = forms.DateTimeField(
@@ -22,11 +24,23 @@ class ReservationCreateForm(forms.Form):
         widget=forms.Textarea(attrs={'rows': 4}),
     )
 
+    def __init__(self, *args, equipment=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.equipment = equipment
+        min_duration_minutes = Reservation.get_min_duration_minutes(equipment)
+        self.fields['duration_minutes'].min_value = min_duration_minutes
+        self.fields['duration_minutes'].initial = min_duration_minutes
+
     def clean_start_at(self):
         start_at = self.cleaned_data['start_at']
         if timezone.is_naive(start_at):
             start_at = timezone.make_aware(start_at, timezone.get_current_timezone())
         return start_at
+
+    def clean_duration_minutes(self):
+        duration_minutes = self.cleaned_data['duration_minutes']
+        Reservation.validate_duration_minutes(duration_minutes, self.equipment)
+        return duration_minutes
 
     def get_end_at(self):
         return self.cleaned_data['start_at'] + timedelta(minutes=self.cleaned_data['duration_minutes'])
@@ -35,10 +49,24 @@ class ReservationCreateForm(forms.Form):
 class ReservationExtensionForm(forms.Form):
     extra_minutes = forms.IntegerField(
         label='Продлить на, мин',
-        min_value=20,
+        min_value=1,
         max_value=1440,
-        initial=60,
+        initial=10,
     )
+
+    def __init__(self, *args, reservation=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.reservation = reservation
+        self.fields['extra_minutes'].initial = 10
+
+    def clean_extra_minutes(self):
+        extra_minutes = self.cleaned_data['extra_minutes']
+        if self.reservation is None:
+            return extra_minutes
+
+        total_duration_minutes = self.reservation.duration_minutes + extra_minutes
+        Reservation.validate_duration_minutes(total_duration_minutes, self.reservation.equipment)
+        return extra_minutes
 
 
 class ReservationCancelForm(forms.Form):

@@ -1,8 +1,11 @@
+from datetime import datetime, timedelta
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect
+from django.utils import timezone
 from django.views.generic import FormView, ListView, TemplateView
 
 from equipment.models import Equipment, EquipmentStatus
@@ -35,9 +38,54 @@ class ReservationListView(LoginRequiredMixin, ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['upcoming'] = [r for r in context['reservations'] if r.status in Reservation.ACTIVE_STATUSES]
-        context['history'] = [r for r in context['reservations'] if r.status not in Reservation.ACTIVE_STATUSES]
+        upcoming = [r for r in context['reservations'] if r.status in Reservation.ACTIVE_STATUSES]
+        history = [r for r in context['reservations'] if r.status not in Reservation.ACTIVE_STATUSES]
+        week_start = self._get_selected_week_start()
+        week_days = self._build_week_days(upcoming, week_start)
+
+        context['upcoming'] = upcoming
+        context['history'] = history
+        context['week_days'] = week_days
+        context['selected_week_start'] = week_start
+        context['selected_week_end'] = week_start + timedelta(days=6)
+        context['previous_week'] = (week_start - timedelta(days=7)).strftime('%Y-%m-%d')
+        context['next_week'] = (week_start + timedelta(days=7)).strftime('%Y-%m-%d')
+        context['current_week'] = timezone.localdate().strftime('%Y-%m-%d')
+        context['upcoming_count'] = len(upcoming)
+        context['week_has_reservations'] = any(day['reservations'] for day in week_days)
         return context
+
+    def _get_selected_week_start(self):
+        raw_week = self.request.GET.get('week', '').strip()
+        if raw_week:
+            try:
+                selected_day = datetime.strptime(raw_week, '%Y-%m-%d').date()
+            except ValueError:
+                selected_day = timezone.localdate()
+        else:
+            selected_day = timezone.localdate()
+        return selected_day - timedelta(days=selected_day.weekday())
+
+    def _build_week_days(self, upcoming, week_start):
+        week_days = []
+        for offset in range(7):
+            day = week_start + timedelta(days=offset)
+            day_start = timezone.make_aware(datetime.combine(day, datetime.min.time()))
+            day_end = day_start + timedelta(days=1)
+            day_reservations = [
+                reservation
+                for reservation in upcoming
+                if reservation.start_at < day_end and reservation.end_at > day_start
+            ]
+            day_reservations.sort(key=lambda reservation: reservation.start_at)
+            week_days.append(
+                {
+                    'date': day,
+                    'is_today': day == timezone.localdate(),
+                    'reservations': day_reservations,
+                }
+            )
+        return week_days
 
 
 class ReservationCreateView(LoginRequiredMixin, FormView):
@@ -56,9 +104,28 @@ class ReservationCreateView(LoginRequiredMixin, FormView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_form(self, form_class=None):
-        form = super().get_form(form_class)
-        form.fields['duration_minutes'].initial = self.equipment.slot_duration_minutes
-        return form
+        return super().get_form(form_class)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['equipment'] = self.equipment
+        return kwargs
+
+    def get_initial(self):
+        initial = super().get_initial()
+        start_at = self.request.GET.get('start_at', '').strip()
+        if not start_at:
+            return initial
+
+        try:
+            parsed = datetime.strptime(start_at, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            return initial
+
+        if timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+        initial['start_at'] = timezone.localtime(parsed).strftime('%Y-%m-%dT%H:%M')
+        return initial
 
     def form_valid(self, form):
         try:
@@ -135,6 +202,11 @@ class ReservationExtendView(LoginRequiredMixin, FormView):
             messages.error(request, 'Продлить можно только активную бронь.')
             return redirect('reservations:list')
         return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['reservation'] = self.reservation
+        return kwargs
 
     def form_valid(self, form):
         try:

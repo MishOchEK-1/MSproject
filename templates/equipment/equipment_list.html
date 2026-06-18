@@ -49,6 +49,13 @@
                     <span class="pill">{{ equipment.get_status_display }}</span>
                 </div>
                 <p style="color:var(--muted); margin:10px 0 8px;">{{ equipment.category.name }} · {{ equipment.inventory_number }}</p>
+                {% if equipment.photo %}
+                    <img
+                        src="{{ equipment.photo.url }}"
+                        alt="{{ equipment.name }}"
+                        style="width:100%; height:180px; object-fit:cover; border-radius:16px; border:1px solid var(--border); margin:0 0 14px;"
+                    >
+                {% endif %}
                 <p style="margin:0 0 14px;">{{ equipment.description|default:"Описание пока не заполнено."|truncatechars:140 }}</p>
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
                     <span style="color:var(--muted);">Слот: {{ equipment.slot_duration_minutes }} мин</span>
@@ -59,5 +66,27 @@
             <div class="meta-row">Ничего не найдено по текущим фильтрам.</div>
         {% endfor %}
     </div>
+
+    {% if is_paginated %}
+        <div class="pagination">
+            {% if page_obj.has_previous %}
+                <a
+                    href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category|urlencode }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status|urlencode }}{% endif %}"
+                    class="pill"
+                >
+                    Назад
+                </a>
+            {% endif %}
+            <span class="pagination__label">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+                <a
+                    href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q|urlencode }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category|urlencode }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status|urlencode }}{% endif %}"
+                    class="pill"
+                >
+                    Вперёд
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
 </section>
 {% endblock %}

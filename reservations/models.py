@@ -17,6 +17,7 @@ class ReservationStatus(models.TextChoices):
 
 class Reservation(models.Model):
     ACTIVE_STATUSES = (ReservationStatus.PENDING, ReservationStatus.APPROVED)
+    MAX_DURATION_MINUTES = 24 * 60
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -116,6 +117,27 @@ class Reservation(models.Model):
     def requires_manual_approval(self):
         return not self.user.can_book_without_approval
 
+    @classmethod
+    def get_min_duration_minutes(cls, equipment):
+        if equipment is None:
+            return 20
+        return equipment.slot_duration_minutes
+
+    @classmethod
+    def validate_duration_minutes(cls, duration_minutes, equipment=None):
+        min_duration_minutes = cls.get_min_duration_minutes(equipment)
+
+        if duration_minutes < min_duration_minutes:
+            raise ValidationError(
+                f'Минимальная длительность брони для этого оборудования - {min_duration_minutes} минут.'
+            )
+
+        if duration_minutes > cls.MAX_DURATION_MINUTES:
+            raise ValidationError('Максимальная длительность брони - 24 часа.')
+
+        if duration_minutes > min_duration_minutes and duration_minutes % 10 != 0:
+            raise ValidationError('Если длительность больше базового слота, она должна быть кратна 10 минутам.')
+
     def can_be_cancelled_by(self, user):
         if not user or not user.is_authenticated:
             return False
@@ -137,10 +159,11 @@ class Reservation(models.Model):
 
         if self.start_at and self.end_at:
             duration = self.end_at - self.start_at
-            if duration < timedelta(minutes=20):
-                errors['end_at'] = 'Минимальная длительность брони - 20 минут.'
-            if duration > timedelta(hours=24):
-                errors['end_at'] = 'Максимальная длительность брони - 24 часа.'
+            duration_minutes = int(duration.total_seconds() // 60)
+            try:
+                self.validate_duration_minutes(duration_minutes, self.equipment if self.equipment_id else None)
+            except ValidationError as exc:
+                errors['end_at'] = exc.messages[0]
 
         if self.start_at and self.start_at > now + timedelta(weeks=3):
             errors['start_at'] = 'Бронь нельзя создать более чем на 3 недели вперед.'

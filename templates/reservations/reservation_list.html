@@ -4,42 +4,100 @@
 
 {% block content %}
 <section class="card">
-    <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start; flex-wrap:wrap;">
+    <div class="page-header">
         <div>
-            <h1 style="margin:0 0 8px;">Мои брони</h1>
-            <p style="margin:0; color:var(--muted);">Здесь доступны активные брони и история действий.</p>
+            <h1>Мои брони</h1>
+            <p>Недельный календарь показывает ближайшие брони по дням и времени, а история остаётся ниже отдельным списком.</p>
         </div>
         <a href="{% url 'equipment:list' %}" class="pill">К оборудованию</a>
     </div>
 
-    <h2 style="margin-top:28px;">Активные</h2>
-    <div class="grid">
-        {% for reservation in upcoming %}
+    <div class="reservation-calendar" style="margin-top:24px;">
+        <div class="reservation-calendar__hero">
+            <div class="reservation-calendar__hero-top">
+                <div class="reservation-calendar__range">
+                    <span class="meta-label">Календарь недели</span>
+                    <strong>{{ selected_week_start|date:"d.m" }} - {{ selected_week_end|date:"d.m.Y" }}</strong>
+                    <div class="inline-note">Сначала видно, в какие дни неделя уже занята и где есть свободные окна.</div>
+                </div>
+                <div class="reservation-calendar__nav">
+                    <a href="{% url 'reservations:list' %}?week={{ previous_week }}" class="pill">Предыдущая</a>
+                    <a href="{% url 'reservations:list' %}?week={{ current_week }}" class="pill pill--secondary">Текущая</a>
+                    <a href="{% url 'reservations:list' %}?week={{ next_week }}" class="pill">Следующая</a>
+                </div>
+            </div>
+
+            <div class="reservation-calendar__stats">
+                <div class="reservation-calendar__stat">
+                    <strong>{{ upcoming_count }}</strong>
+                    <span class="inline-note">Активных и будущих броней</span>
+                </div>
+                <div class="reservation-calendar__stat">
+                    <strong>{% if week_has_reservations %}Да{% else %}Нет{% endif %}</strong>
+                    <span class="inline-note">Есть брони в выбранной неделе</span>
+                </div>
+                <div class="reservation-calendar__stat">
+                    <strong>{{ selected_week_start|date:"d.m" }}</strong>
+                    <span class="inline-note">Начало выбранной недели</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="reservation-calendar__board">
+            {% for day in week_days %}
+                <article class="reservation-calendar__day {% if day.is_today %}reservation-calendar__day--today{% endif %}">
+                    <div class="reservation-calendar__day-head">
+                        <div class="reservation-calendar__day-name">
+                            <span class="meta-label">{% if day.is_today %}Сегодня{% else %}{{ day.date|date:"l" }}{% endif %}</span>
+                            <strong>{{ day.date|date:"d.m.Y" }}</strong>
+                        </div>
+                        <span class="reservation-calendar__count">{{ day.reservations|length }}</span>
+                    </div>
+
+                    {% if day.reservations %}
+                        <div class="reservation-calendar__slots">
+                            {% for reservation in day.reservations %}
+                                <div class="reservation-calendar__slot">
+                                    <div class="reservation-calendar__slot-top">
+                                        <div>
+                                            <div class="reservation-calendar__time">{{ reservation.start_at|date:"H:i" }} - {{ reservation.end_at|date:"H:i" }}</div>
+                                            <div class="meta-value" style="margin-top:10px;">{{ reservation.equipment.name }}</div>
+                                        </div>
+                                        <span class="status-badge status-badge--{% if reservation.status == 'approved' %}approved{% else %}pending{% endif %}">{{ reservation.get_status_display }}</span>
+                                    </div>
+
+                                    {% if reservation.request_comment %}
+                                        <div class="inline-note">{{ reservation.request_comment }}</div>
+                                    {% endif %}
+
+                                    <div class="reservation-calendar__actions">
+                                        <a href="{% url 'reservations:extend' reservation.pk %}" class="pill">Продлить</a>
+                                        <a href="{% url 'reservations:cancel' reservation.pk %}" class="pill">Отменить</a>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="reservation-calendar__empty">
+                            <div class="empty-state">На этот день у тебя пока нет активных или будущих броней.</div>
+                        </div>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    </div>
+
+    <h2 style="margin-top:32px;">История</h2>
+    <div class="reservation-history">
+        {% for reservation in history %}
             <article class="meta-row">
-                <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                <div class="reservation-history__item">
                     <div>
                         <div class="meta-value">{{ reservation.equipment.name }}</div>
                         <div style="color:var(--muted);">{{ reservation.start_at|date:"d.m.Y H:i" }} - {{ reservation.end_at|date:"d.m.Y H:i" }}</div>
                     </div>
-                    <span class="pill">{{ reservation.get_status_display }}</span>
+                    <span class="status-badge status-badge--{% if reservation.status == 'completed' %}success{% else %}blocked{% endif %}">{{ reservation.get_status_display }}</span>
                 </div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
-                    <a href="{% url 'reservations:extend' reservation.pk %}" class="pill">Продлить</a>
-                    <a href="{% url 'reservations:cancel' reservation.pk %}" class="pill">Отменить</a>
-                </div>
-            </article>
-        {% empty %}
-            <div class="meta-row">Активных броней пока нет.</div>
-        {% endfor %}
-    </div>
-
-    <h2 style="margin-top:28px;">История</h2>
-    <div class="grid">
-        {% for reservation in history %}
-            <article class="meta-row">
-                <div class="meta-value">{{ reservation.equipment.name }}</div>
-                <div style="color:var(--muted);">{{ reservation.start_at|date:"d.m.Y H:i" }} - {{ reservation.end_at|date:"d.m.Y H:i" }}</div>
-                <div style="margin-top:8px;">Статус: {{ reservation.get_status_display }}</div>
             </article>
         {% empty %}
             <div class="meta-row">История пока пуста.</div>
