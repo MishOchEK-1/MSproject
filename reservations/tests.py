@@ -318,7 +318,32 @@ class ReservationFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         reservation.refresh_from_db()
         self.assertEqual(reservation.duration_minutes, 60)
-        self.assertContains(response, 'Если длительность больше базового слота, она должна быть кратна 10 минутам.')
+        self.assertContains(response, 'Убедитесь, что это значение больше либо равно 10.')
+
+    def test_reservation_create_form_uses_ten_minute_step(self):
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse('reservations:create', args=[self.equipment.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="duration_minutes"')
+        self.assertContains(response, 'step="10"')
+
+    def test_reservation_extend_form_uses_ten_minute_step(self):
+        reservation = Reservation.objects.create(
+            user=self.student,
+            equipment=self.equipment,
+            start_at=timezone.now() + timedelta(days=2),
+            end_at=timezone.now() + timedelta(days=2, hours=1),
+            status=ReservationStatus.APPROVED,
+        )
+        self.client.force_login(self.student)
+
+        response = self.client.get(reverse('reservations:extend', args=[reservation.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="extra_minutes"')
+        self.assertContains(response, 'step="10"')
 
     def test_staff_can_approve_pending_reservation(self):
         reservation = Reservation.objects.create(
@@ -430,6 +455,7 @@ class ReservationListViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'reservation-calendar__board-wrap')
+        self.assertContains(response, 'reservation-calendar__board')
 
     def test_reservation_list_shows_cross_midnight_reservation_on_both_days(self):
         target_day = timezone.localdate() + timedelta(days=2)

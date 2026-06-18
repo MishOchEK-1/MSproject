@@ -17,6 +17,7 @@ class ReservationCreateForm(forms.Form):
         min_value=20,
         max_value=1440,
         initial=60,
+        widget=forms.NumberInput(attrs={'step': 10}),
     )
     request_comment = forms.CharField(
         label='Комментарий для подтверждения',
@@ -30,6 +31,8 @@ class ReservationCreateForm(forms.Form):
         min_duration_minutes = Reservation.get_min_duration_minutes(equipment)
         self.fields['duration_minutes'].min_value = min_duration_minutes
         self.fields['duration_minutes'].initial = min_duration_minutes
+        self.fields['duration_minutes'].widget.attrs['min'] = min_duration_minutes
+        self.fields['duration_minutes'].widget.attrs['step'] = 10
 
     def clean_start_at(self):
         start_at = self.cleaned_data['start_at']
@@ -49,15 +52,18 @@ class ReservationCreateForm(forms.Form):
 class ReservationExtensionForm(forms.Form):
     extra_minutes = forms.IntegerField(
         label='Продлить на, мин',
-        min_value=1,
+        min_value=10,
         max_value=1440,
         initial=10,
+        widget=forms.NumberInput(attrs={'step': 10}),
     )
 
     def __init__(self, *args, reservation=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.reservation = reservation
         self.fields['extra_minutes'].initial = 10
+        self.fields['extra_minutes'].widget.attrs['min'] = 10
+        self.fields['extra_minutes'].widget.attrs['step'] = 10
 
     def clean_extra_minutes(self):
         extra_minutes = self.cleaned_data['extra_minutes']

@@ -225,6 +225,7 @@ class EquipmentViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'min-width:88px;')
+        self.assertContains(response, 'text-overflow: ellipsis;')
 
     def test_equipment_schedule_shows_confirmed_reservation_window(self):
         self.client.force_login(self.user)
