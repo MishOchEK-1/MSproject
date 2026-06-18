@@ -423,6 +423,14 @@ class ReservationListViewTests(TestCase):
         self.assertContains(response, target_day.strftime('%d.%m.%Y'))
         self.assertContains(response, '15:00 - 17:00')
 
+    def test_reservation_list_wraps_week_grid_in_horizontal_scroller(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse('reservations:list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'reservation-calendar__board-wrap')
+
     def test_reservation_list_shows_cross_midnight_reservation_on_both_days(self):
         target_day = timezone.localdate() + timedelta(days=2)
         start_at = timezone.make_aware(datetime.combine(target_day, time(hour=23, minute=30)))

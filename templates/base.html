@@ -329,6 +329,10 @@
         }
 
         .schedule-slot {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
             min-width: 84px;
             min-height: 44px;
             padding: 8px;
@@ -339,6 +343,10 @@
             line-height: 1.2;
             border: 1px solid transparent;
             overflow-wrap: anywhere;
+        }
+
+        .schedule-slot span {
+            display: block;
         }
 
         .schedule-slot--free {
@@ -519,8 +527,14 @@
 
         .reservation-calendar__board {
             display: grid;
-            grid-template-columns: repeat(7, minmax(0, 1fr));
+            grid-template-columns: repeat(7, minmax(180px, 1fr));
             gap: 14px;
+            min-width: 1344px;
+        }
+
+        .reservation-calendar__board-wrap {
+            overflow-x: auto;
+            padding-bottom: 4px;
         }
 
         .reservation-calendar__day {
@@ -657,6 +671,7 @@
 
             .reservation-calendar__board {
                 grid-template-columns: 1fr;
+                min-width: 0;
             }
 
             .reservation-calendar__day {

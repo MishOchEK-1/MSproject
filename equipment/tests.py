@@ -218,6 +218,14 @@ class EquipmentViewTests(TestCase):
             f'{reverse("reservations:create", args=[self.equipment.pk])}?start_at={selected_day.strftime("%Y-%m-%d")}T00:00',
         )
 
+    def test_equipment_schedule_keeps_hour_cells_wide_enough(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse('equipment:schedule'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'min-width:88px;')
+
     def test_equipment_schedule_shows_confirmed_reservation_window(self):
         self.client.force_login(self.user)
         selected_day = timezone.localdate() + timedelta(days=1)
