@@ -47,13 +47,13 @@ class User(AbstractUser):
         super().clean()
 
         if self.role in {UserRole.STAFF, UserRole.ADMIN} and self.email:
-            if not self.email.lower().endswith('@edu.omsk.ru'):
+            if not self.email.lower().endswith('@auca.kg'):
                 raise ValidationError(
                     {'email': 'Для персонала и студентов нужна корпоративная почта вуза.'}
                 )
 
         if self.role == UserRole.STUDENT and self.email:
-            if not self.email.lower().endswith('@edu.omsk.ru'):
+            if not self.email.lower().endswith('@auca.kg'):
                 raise ValidationError(
                     {'email': 'Для персонала и студентов нужна корпоративная почта вуза.'}
                 )
