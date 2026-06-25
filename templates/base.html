@@ -18,6 +18,27 @@
             --danger: #b42318;
             --success: #027a48;
             --warning: #b25a12;
+            --status-free-ink: #14532d;
+            --status-free-bg: #dcfce7;
+            --status-free-border: #4ade80;
+            --status-approved-ink: #1d4ed8;
+            --status-approved-bg: #dbeafe;
+            --status-approved-border: #60a5fa;
+            --status-pending-ink: #92400e;
+            --status-pending-bg: #fef3c7;
+            --status-pending-border: #f59e0b;
+            --status-blocked-ink: #374151;
+            --status-blocked-bg: #e5e7eb;
+            --status-blocked-border: #9ca3af;
+            --status-view-only-ink: #6b5c45;
+            --status-view-only-bg: #f3ead8;
+            --status-view-only-border: #c8b79a;
+            --status-maintenance-ink: #9a3412;
+            --status-maintenance-bg: #ffedd5;
+            --status-maintenance-border: #fb923c;
+            --status-danger-ink: #991b1b;
+            --status-danger-bg: #fee2e2;
+            --status-danger-border: #f87171;
             --shadow: 0 24px 60px rgba(31, 41, 51, 0.08);
         }
 
@@ -288,6 +309,7 @@
             font-size: 0.92rem;
             font-weight: 700;
             border: 1px solid transparent;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
         }
 
         .status-badge--success {
@@ -297,35 +319,60 @@
         }
 
         .status-badge--approved {
-            color: #8a1f17;
-            background: #fee4e2;
-            border-color: #f2b8b5;
+            color: var(--status-approved-ink);
+            background: var(--status-approved-bg);
+            border-color: var(--status-approved-border);
         }
 
-        .status-badge--warning,
         .status-badge--pending {
-            color: #9f1239;
-            background: #ffe4e6;
-            border-color: #fda4af;
+            color: var(--status-pending-ink);
+            background: var(--status-pending-bg);
+            border-color: var(--status-pending-border);
         }
 
         .status-badge--blocked,
         .status-badge--danger {
-            color: #8a1f17;
-            background: #fee4e2;
-            border-color: #f2b8b5;
+            color: var(--status-blocked-ink);
+            background: var(--status-blocked-bg);
+            border-color: var(--status-blocked-border);
+        }
+
+        .status-badge--warning {
+            color: var(--status-maintenance-ink);
+            background: var(--status-maintenance-bg);
+            border-color: var(--status-maintenance-border);
         }
 
         .status-badge--maintenance {
-            color: #8a4b08;
-            background: #fff0d3;
-            border-color: #f2d19a;
+            color: var(--status-maintenance-ink);
+            background: var(--status-maintenance-bg);
+            border-color: var(--status-maintenance-border);
         }
 
         .status-badge--free {
-            color: #0f766e;
-            background: #dff7f3;
-            border-color: #9edfd4;
+            color: var(--status-free-ink);
+            background: var(--status-free-bg);
+            border-color: var(--status-free-border);
+        }
+
+        .status-badge--view-only {
+            color: var(--status-view-only-ink);
+            background:
+                repeating-linear-gradient(
+                    -45deg,
+                    rgba(255, 255, 255, 0.38) 0,
+                    rgba(255, 255, 255, 0.38) 8px,
+                    transparent 8px,
+                    transparent 16px
+                ),
+                var(--status-view-only-bg);
+            border-color: var(--status-view-only-border);
+        }
+
+        .status-badge--danger {
+            color: var(--status-danger-ink);
+            background: var(--status-danger-bg);
+            border-color: var(--status-danger-border);
         }
 
         .schedule-slot {
@@ -352,30 +399,44 @@
         }
 
         .schedule-slot--free {
-            color: #0f766e;
-            background: #dff7f3;
-            border-color: #9edfd4;
+            color: var(--status-free-ink);
+            background: var(--status-free-bg);
+            border-color: var(--status-free-border);
+        }
+
+        .schedule-slot--view-only {
+            color: var(--status-view-only-ink);
+            background:
+                repeating-linear-gradient(
+                    -45deg,
+                    rgba(255, 255, 255, 0.34) 0,
+                    rgba(255, 255, 255, 0.34) 8px,
+                    transparent 8px,
+                    transparent 16px
+                ),
+                var(--status-view-only-bg);
+            border-color: var(--status-view-only-border);
         }
 
         .schedule-slot--approved {
-            color: #8a1f17;
-            background: #fee4e2;
-            border-color: #f2b8b5;
+            color: var(--status-approved-ink);
+            background: var(--status-approved-bg);
+            border-color: var(--status-approved-border);
         }
 
         .schedule-slot--pending {
-            color: #9f1239;
-            background: #ffe4e6;
-            border-color: #fda4af;
+            color: var(--status-pending-ink);
+            background: var(--status-pending-bg);
+            border-color: var(--status-pending-border);
         }
 
         .schedule-slot--blocked,
         .schedule-slot--rejected,
         .schedule-slot--cancelled,
         .schedule-slot--expired {
-            color: #8a1f17;
-            background: #fee4e2;
-            border-color: #f2b8b5;
+            color: var(--status-blocked-ink);
+            background: var(--status-blocked-bg);
+            border-color: var(--status-blocked-border);
         }
 
         .section-stack {

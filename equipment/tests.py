@@ -67,6 +67,23 @@ class EquipmentViewTests(TestCase):
             phone='+70000000030',
             role=UserRole.GUEST,
         )
+        self.student_viewer = User.objects.create_user(
+            username='equipment-student',
+            password='secure-pass-123',
+            email='equipment-student@auca.kg',
+            full_name='Equipment Student',
+            phone='+70000000031',
+            role=UserRole.STUDENT,
+            has_completed_training=True,
+        )
+        self.staff_viewer = User.objects.create_user(
+            username='equipment-staff',
+            password='secure-pass-123',
+            email='equipment-staff@tsiauca.kg',
+            full_name='Equipment Staff',
+            phone='+70000000032',
+            role=UserRole.STAFF,
+        )
         self.category = EquipmentCategory.objects.create(name='Паяльные станции')
         self.equipment = Equipment.objects.create(
             name='Hakko 1',
@@ -128,6 +145,47 @@ class EquipmentViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '14:20-15:20')
+        self.assertContains(response, f'{ReservationStatus.APPROVED.label} · Скрыто')
+
+    def test_equipment_detail_hides_owner_name_from_student_viewer(self):
+        self.client.force_login(self.student_viewer)
+        selected_day = timezone.localdate() + timedelta(days=1)
+        start_at = timezone.make_aware(datetime.combine(selected_day, time(hour=14, minute=20)))
+        Reservation.objects.create(
+            user=self.user,
+            equipment=self.equipment,
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
+            status=ReservationStatus.APPROVED,
+        )
+
+        response = self.client.get(
+            reverse('equipment:detail', args=[self.equipment.pk]),
+            {'date': selected_day.strftime('%Y-%m-%d')},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'{ReservationStatus.APPROVED.label} · Скрыто')
+        self.assertNotContains(response, self.user.full_name)
+
+    def test_equipment_detail_shows_owner_name_to_staff_viewer(self):
+        self.client.force_login(self.staff_viewer)
+        selected_day = timezone.localdate() + timedelta(days=1)
+        start_at = timezone.make_aware(datetime.combine(selected_day, time(hour=14, minute=20)))
+        Reservation.objects.create(
+            user=self.user,
+            equipment=self.equipment,
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
+            status=ReservationStatus.APPROVED,
+        )
+
+        response = self.client.get(
+            reverse('equipment:detail', args=[self.equipment.pk]),
+            {'date': selected_day.strftime('%Y-%m-%d')},
+        )
+
+        self.assertEqual(response.status_code, 200)
         self.assertContains(response, f'{ReservationStatus.APPROVED.label} · {self.user.full_name}')
 
     def test_equipment_detail_renders_booking_links_for_free_slots(self):
@@ -142,8 +200,26 @@ class EquipmentViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(
             response,
+            f'{reverse("reservations:create", args=[self.equipment.pk])}?start_at={selected_day.strftime("%Y-%m-%d")}T09:00',
+        )
+        self.assertNotContains(
+            response,
             f'{reverse("reservations:create", args=[self.equipment.pk])}?start_at={selected_day.strftime("%Y-%m-%d")}T00:00',
         )
+
+    def test_equipment_detail_marks_empty_hour_outside_start_window_as_view_only(self):
+        self.client.force_login(self.user)
+        selected_day = timezone.localdate() + timedelta(days=1)
+
+        response = self.client.get(
+            reverse('equipment:detail', args=[self.equipment.pk]),
+            {'date': selected_day.strftime('%Y-%m-%d')},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'status-badge--view-only')
+        self.assertContains(response, 'Старт недоступен')
+        self.assertContains(response, 'Час пустой, но старт брони доступен только с 09:00 до 19:00.')
 
     def test_equipment_detail_shows_pending_reservation_as_busy_not_free(self):
         self.client.force_login(self.user)
@@ -165,7 +241,7 @@ class EquipmentViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '14:20-15:20')
         self.assertContains(response, ReservationStatus.PENDING.label)
-        self.assertContains(response, f'{ReservationStatus.PENDING.label} · {self.user.full_name}')
+        self.assertContains(response, f'{ReservationStatus.PENDING.label} · Скрыто')
 
     def test_equipment_detail_hides_booking_cta_when_user_cannot_book(self):
         self.equipment.requires_training = True
@@ -215,8 +291,26 @@ class EquipmentViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(
             response,
+            f'{reverse("reservations:create", args=[self.equipment.pk])}?start_at={selected_day.strftime("%Y-%m-%d")}T09:00',
+        )
+        self.assertNotContains(
+            response,
             f'{reverse("reservations:create", args=[self.equipment.pk])}?start_at={selected_day.strftime("%Y-%m-%d")}T00:00',
         )
+
+    def test_equipment_schedule_marks_empty_hour_outside_start_window_as_view_only(self):
+        self.client.force_login(self.user)
+        selected_day = timezone.localdate() + timedelta(days=1)
+
+        response = self.client.get(
+            reverse('equipment:schedule'),
+            {'date': selected_day.strftime('%Y-%m-%d')},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'status-badge--view-only')
+        self.assertContains(response, 'schedule-slot--view-only')
+        self.assertContains(response, 'Час пустой, но старт брони доступен только с 09:00 до 19:00.')
 
     def test_equipment_schedule_keeps_hour_cells_wide_enough(self):
         self.client.force_login(self.user)
@@ -226,6 +320,18 @@ class EquipmentViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'min-width:88px;')
         self.assertContains(response, 'text-overflow: ellipsis;')
+
+    def test_equipment_schedule_uses_distinct_semantic_status_palette(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(reverse('equipment:schedule'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '--status-free-bg: #dcfce7;')
+        self.assertContains(response, '--status-view-only-bg: #f3ead8;')
+        self.assertContains(response, '--status-approved-bg: #dbeafe;')
+        self.assertContains(response, '--status-pending-bg: #fef3c7;')
+        self.assertContains(response, '--status-blocked-bg: #e5e7eb;')
 
     def test_equipment_schedule_shows_confirmed_reservation_window(self):
         self.client.force_login(self.user)
@@ -246,6 +352,47 @@ class EquipmentViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '14:20-15:20')
+        self.assertContains(response, f'{ReservationStatus.APPROVED.label} · Скрыто')
+
+    def test_equipment_schedule_hides_owner_name_from_student_viewer(self):
+        self.client.force_login(self.student_viewer)
+        selected_day = timezone.localdate() + timedelta(days=1)
+        start_at = timezone.make_aware(datetime.combine(selected_day, time(hour=14, minute=20)))
+        Reservation.objects.create(
+            user=self.user,
+            equipment=self.equipment,
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
+            status=ReservationStatus.APPROVED,
+        )
+
+        response = self.client.get(
+            reverse('equipment:schedule'),
+            {'date': selected_day.strftime('%Y-%m-%d')},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'{ReservationStatus.APPROVED.label} · Скрыто')
+        self.assertNotContains(response, self.user.full_name)
+
+    def test_equipment_schedule_shows_owner_name_to_staff_viewer(self):
+        self.client.force_login(self.staff_viewer)
+        selected_day = timezone.localdate() + timedelta(days=1)
+        start_at = timezone.make_aware(datetime.combine(selected_day, time(hour=14, minute=20)))
+        Reservation.objects.create(
+            user=self.user,
+            equipment=self.equipment,
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
+            status=ReservationStatus.APPROVED,
+        )
+
+        response = self.client.get(
+            reverse('equipment:schedule'),
+            {'date': selected_day.strftime('%Y-%m-%d')},
+        )
+
+        self.assertEqual(response.status_code, 200)
         self.assertContains(response, f'{ReservationStatus.APPROVED.label} · {self.user.full_name}')
 
     def test_equipment_schedule_shows_pending_reservation_window(self):
@@ -267,7 +414,7 @@ class EquipmentViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '14:20-15:20')
-        self.assertContains(response, f'{ReservationStatus.PENDING.label} · {self.user.full_name}')
+        self.assertContains(response, f'{ReservationStatus.PENDING.label} · Скрыто')
 
     def test_equipment_schedule_defaults_to_nearest_day_with_reservation(self):
         self.client.force_login(self.user)
@@ -346,6 +493,8 @@ class EquipmentViewTests(TestCase):
         start_base = timezone.localtime(timezone.now()).replace(second=0, microsecond=0)
         if start_base.minute % 20:
             start_base += timedelta(minutes=20 - start_base.minute % 20)
+        while not Reservation.can_start_at(start_base):
+            start_base += timedelta(minutes=20)
         Reservation.objects.create(
             user=self.user,
             equipment=self.equipment,
@@ -357,7 +506,10 @@ class EquipmentViewTests(TestCase):
         response = self.client.get(reverse('equipment:detail', args=[self.equipment.pk]))
 
         self.assertEqual(response.status_code, 200)
-        expected_time = timezone.localtime(start_base + timedelta(minutes=20)).strftime('%d.%m.%Y %H:%M')
+        expected_start = start_base + timedelta(minutes=20)
+        while not Reservation.can_start_at(expected_start):
+            expected_start += timedelta(minutes=20)
+        expected_time = timezone.localtime(expected_start).strftime('%d.%m.%Y %H:%M')
         self.assertContains(response, expected_time)
 
     def test_schedule_booking_link_prefills_reservation_form_start_at(self):

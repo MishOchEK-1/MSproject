@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import time, timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -18,6 +18,9 @@ class ReservationStatus(models.TextChoices):
 class Reservation(models.Model):
     ACTIVE_STATUSES = (ReservationStatus.PENDING, ReservationStatus.APPROVED)
     MAX_DURATION_MINUTES = 24 * 60
+    START_STEP_MINUTES = 20
+    EARLIEST_START_TIME = time(hour=9, minute=0)
+    LATEST_START_TIME = time(hour=19, minute=0)
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -138,6 +141,36 @@ class Reservation(models.Model):
         if duration_minutes > min_duration_minutes and duration_minutes % 10 != 0:
             raise ValidationError('Если длительность больше базового слота, она должна быть кратна 10 минутам.')
 
+    @classmethod
+    def normalize_start_at(cls, start_at):
+        if timezone.is_naive(start_at):
+            start_at = timezone.make_aware(start_at, timezone.get_current_timezone())
+        return timezone.localtime(start_at)
+
+    @classmethod
+    def can_start_at(cls, start_at):
+        local_start = cls.normalize_start_at(start_at)
+        local_time = local_start.timetz().replace(tzinfo=None)
+        return cls.EARLIEST_START_TIME <= local_time <= cls.LATEST_START_TIME
+
+    @classmethod
+    def is_start_step_aligned(cls, start_at):
+        local_start = cls.normalize_start_at(start_at)
+        return (
+            local_start.minute % cls.START_STEP_MINUTES == 0
+            and local_start.second == 0
+            and local_start.microsecond == 0
+        )
+
+    @classmethod
+    def validate_start_at(cls, start_at):
+        if not cls.can_start_at(start_at):
+            raise ValidationError('Начать бронь можно только с 09:00 до 19:00. Завершение может быть позже 19:00.')
+        if not cls.is_start_step_aligned(start_at):
+            raise ValidationError(
+                f'Время старта должно быть с шагом {cls.START_STEP_MINUTES} минут: 09:00, 09:20, 09:40 и далее.'
+            )
+
     def can_be_cancelled_by(self, user):
         if not user or not user.is_authenticated:
             return False
@@ -164,6 +197,12 @@ class Reservation(models.Model):
                 self.validate_duration_minutes(duration_minutes, self.equipment if self.equipment_id else None)
             except ValidationError as exc:
                 errors['end_at'] = exc.messages[0]
+
+        if self.start_at:
+            try:
+                self.validate_start_at(self.start_at)
+            except ValidationError as exc:
+                errors['start_at'] = exc.messages[0]
 
         if self.start_at and self.start_at > now + timedelta(weeks=3):
             errors['start_at'] = 'Бронь нельзя создать более чем на 3 недели вперед.'

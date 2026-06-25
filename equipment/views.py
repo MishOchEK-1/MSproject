@@ -12,7 +12,7 @@ from reservations.services import sync_reservation_lifecycle
 
 from .models import Equipment, EquipmentCategory, EquipmentDowntime, EquipmentStatus
 
-BOOKING_STEP_MINUTES = 20
+BOOKING_STEP_MINUTES = Reservation.START_STEP_MINUTES
 SCHEDULE_WINDOW_DAYS = 22
 
 
@@ -42,6 +42,36 @@ def format_reservation_summary(reservation, viewer, *, include_status=True, incl
 
 def format_datetime_local_value(moment):
     return timezone.localtime(moment).strftime('%Y-%m-%dT%H:%M')
+
+
+def can_start_booking_at(moment):
+    return Reservation.can_start_at(moment)
+
+
+def build_empty_slot_presentation(*, equipment, viewer, slot_start, booking_url_builder):
+    if equipment.is_bookable and viewer.can_book_equipment(equipment) and can_start_booking_at(slot_start):
+        return {
+            'status': 'free',
+            'headline': 'Свободно',
+            'label': 'Свободно',
+            'note': 'Окно доступно для старта бронирования в этот час.',
+            'booking_url': booking_url_builder(slot_start),
+        }
+
+    if not equipment.is_bookable:
+        note = 'Час пустой, но оборудование сейчас недоступно для бронирования.'
+    elif not viewer.can_book_equipment(equipment):
+        note = 'Час пустой, но у вас сейчас нет прав начать бронь на это оборудование.'
+    else:
+        note = 'Час пустой, но старт брони доступен только с 09:00 до 19:00.'
+
+    return {
+        'status': 'view-only',
+        'headline': 'Час пустой',
+        'label': 'Пусто',
+        'note': note,
+        'booking_url': None,
+    }
 
 
 def get_schedule_window_dates():
@@ -222,23 +252,27 @@ class EquipmentDetailView(LoginRequiredMixin, DetailView):
                 'status': 'blocked',
                 'headline': 'Недоступно',
                 'detail_lines': [slot_downtime.reason],
+                'note': '',
                 'booking_url': None,
             }
 
         if not slot_reservations:
-            booking_url = None
-            if self.object.is_bookable and self.request.user.can_book_equipment(self.object):
-                start_at_value = format_datetime_local_value(slot_start)
-                booking_url = (
+            empty_slot = build_empty_slot_presentation(
+                equipment=self.object,
+                viewer=self.request.user,
+                slot_start=slot_start,
+                booking_url_builder=lambda moment: (
                     f"{reverse('reservations:create', args=[self.object.pk])}"
-                    f"?start_at={start_at_value}"
-                )
+                    f"?start_at={format_datetime_local_value(moment)}"
+                ),
+            )
             return {
                 'hour_label': slot_start.strftime('%H:%M'),
-                'status': 'free',
-                'headline': 'Свободно',
+                'status': empty_slot['status'],
+                'headline': empty_slot['headline'],
                 'detail_lines': [],
-                'booking_url': booking_url,
+                'note': empty_slot['note'],
+                'booking_url': empty_slot['booking_url'],
             }
 
         detail_lines = [
@@ -256,6 +290,7 @@ class EquipmentDetailView(LoginRequiredMixin, DetailView):
             'status': ReservationStatus.APPROVED if approved_exists else ReservationStatus.PENDING,
             'headline': headline,
             'detail_lines': detail_lines,
+            'note': '',
             'booking_url': None,
         }
 
@@ -265,6 +300,9 @@ class EquipmentDetailView(LoginRequiredMixin, DetailView):
         duration = timedelta(minutes=equipment.slot_duration_minutes)
         while pointer < horizon:
             candidate_end = pointer + duration
+            if not can_start_booking_at(pointer):
+                pointer += timedelta(minutes=BOOKING_STEP_MINUTES)
+                continue
             has_conflict = equipment.reservations.filter(
                 status__in=Reservation.ACTIVE_STATUSES,
                 start_at__lt=candidate_end,
@@ -347,20 +385,19 @@ class EquipmentScheduleView(LoginRequiredMixin, TemplateView):
                     )
                     busy_hours += 1
                 else:
-                    slot_type = 'free'
-                    label = 'Свободно'
-                    detail = ''
-                booking_url = None
-                if (
-                    slot_type == 'free'
-                    and equipment.is_bookable
-                    and self.request.user.can_book_equipment(equipment)
-                ):
-                    start_at_value = format_datetime_local_value(slot_start)
-                    booking_url = (
-                        f"{reverse('reservations:create', args=[equipment.pk])}"
-                        f"?start_at={start_at_value}"
+                    empty_slot = build_empty_slot_presentation(
+                        equipment=equipment,
+                        viewer=self.request.user,
+                        slot_start=slot_start,
+                        booking_url_builder=lambda moment, equipment_pk=equipment.pk: (
+                            f"{reverse('reservations:create', args=[equipment_pk])}"
+                            f"?start_at={format_datetime_local_value(moment)}"
+                        ),
                     )
+                    slot_type = empty_slot['status']
+                    label = empty_slot['label']
+                    detail = empty_slot['note']
+                booking_url = empty_slot['booking_url'] if not slot_reservations and not downtime else None
                 row_slots.append(
                     {
                         'type': slot_type,

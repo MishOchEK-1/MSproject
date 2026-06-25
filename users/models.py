@@ -2,6 +2,8 @@ from django.contrib.auth.models import AbstractUser
 from django.core.exceptions import ValidationError
 from django.db import models
 
+CORPORATE_EMAIL_DOMAINS = ('@auca.kg', '@tsiauca.kg')
+
 
 class UserRole(models.TextChoices):
     GUEST = 'guest', 'Гость'
@@ -46,16 +48,10 @@ class User(AbstractUser):
     def clean(self):
         super().clean()
 
-        if self.role in {UserRole.STAFF, UserRole.ADMIN} and self.email:
-            if not self.email.lower().endswith('@auca.kg'):
+        if self.role in {UserRole.STUDENT, UserRole.STAFF, UserRole.ADMIN} and self.email:
+            if not self.email.lower().endswith(CORPORATE_EMAIL_DOMAINS):
                 raise ValidationError(
-                    {'email': 'Для персонала и студентов нужна корпоративная почта вуза.'}
-                )
-
-        if self.role == UserRole.STUDENT and self.email:
-            if not self.email.lower().endswith('@auca.kg'):
-                raise ValidationError(
-                    {'email': 'Для персонала и студентов нужна корпоративная почта вуза.'}
+                    {'email': 'Для студентов, персонала и администраторов нужна почта доменов @auca.kg или @tsiauca.kg.'}
                 )
 
     def save(self, *args, **kwargs):
@@ -104,9 +100,7 @@ class User(AbstractUser):
     def can_view_reservation_owner(self, reservation):
         if not self.is_authenticated:
             return False
-        if self.role in {UserRole.STAFF, UserRole.ADMIN}:
-            return True
-        return reservation.user_id == self.pk
+        return self.role in {UserRole.STAFF, UserRole.ADMIN}
 
     def can_view_schedule(self):
         return self.is_authenticated

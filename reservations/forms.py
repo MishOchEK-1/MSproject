@@ -29,6 +29,7 @@ class ReservationCreateForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.equipment = equipment
         min_duration_minutes = Reservation.get_min_duration_minutes(equipment)
+        self.fields['start_at'].widget.attrs['step'] = Reservation.START_STEP_MINUTES * 60
         self.fields['duration_minutes'].min_value = min_duration_minutes
         self.fields['duration_minutes'].initial = min_duration_minutes
         self.fields['duration_minutes'].widget.attrs['min'] = min_duration_minutes
@@ -38,6 +39,7 @@ class ReservationCreateForm(forms.Form):
         start_at = self.cleaned_data['start_at']
         if timezone.is_naive(start_at):
             start_at = timezone.make_aware(start_at, timezone.get_current_timezone())
+        Reservation.validate_start_at(start_at)
         return start_at
 
     def clean_duration_minutes(self):

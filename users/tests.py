@@ -37,7 +37,7 @@ class UserModelTests(TestCase):
         user = User.objects.create_user(
             username='staff-user',
             password='secure-pass-123',
-            email='staff@edu.omsk.ru',
+            email='staff@auca.kg',
             full_name='Staff User',
             phone='+70000000010',
             role=UserRole.STAFF,
@@ -51,7 +51,7 @@ class UserModelTests(TestCase):
         user = User.objects.create_user(
             username='admin-user',
             password='secure-pass-123',
-            email='admin@edu.omsk.ru',
+            email='admin@tsiauca.kg',
             full_name='Admin User',
             phone='+70000000011',
             role=UserRole.ADMIN,
@@ -70,7 +70,7 @@ class UserModelTests(TestCase):
             role=UserRole.STUDENT,
         )
 
-        with self.assertRaisesMessage(Exception, 'Для персонала и студентов нужна корпоративная почта вуза.'):
+        with self.assertRaisesMessage(Exception, 'Для студентов, персонала и администраторов нужна почта доменов @auca.kg или @tsiauca.kg.'):
             user.full_clean()
 
     def test_guest_without_training_cannot_book_equipment_that_requires_it(self):
@@ -112,7 +112,7 @@ class PermissionRulesTests(TestCase):
         self.student = User.objects.create_user(
             username='student-user-2',
             password='secure-pass-123',
-            email='student2@edu.omsk.ru',
+            email='student2@auca.kg',
             full_name='Student User Two',
             phone='+70000000015',
             role=UserRole.STUDENT,
@@ -121,7 +121,7 @@ class PermissionRulesTests(TestCase):
         self.staff = User.objects.create_user(
             username='staff-user-2',
             password='secure-pass-123',
-            email='staff2@edu.omsk.ru',
+            email='staff2@tsiauca.kg',
             full_name='Staff User Two',
             phone='+70000000016',
             role=UserRole.STAFF,
@@ -129,7 +129,7 @@ class PermissionRulesTests(TestCase):
         self.admin = User.objects.create_user(
             username='admin-user-2',
             password='secure-pass-123',
-            email='admin2@edu.omsk.ru',
+            email='admin2@auca.kg',
             full_name='Admin User Two',
             phone='+70000000017',
             role=UserRole.ADMIN,
@@ -149,9 +149,10 @@ class PermissionRulesTests(TestCase):
         self.assertFalse(can_view_schedule(anonymous))
         self.assertTrue(can_view_schedule(self.guest))
 
-    def test_only_staff_or_owner_can_view_reservation_owner(self):
-        self.assertTrue(can_view_reservation_owner(self.student, self.reservation))
+    def test_only_staff_and_admin_can_view_reservation_owner(self):
+        self.assertFalse(can_view_reservation_owner(self.student, self.reservation))
         self.assertTrue(can_view_reservation_owner(self.staff, self.reservation))
+        self.assertTrue(can_view_reservation_owner(self.admin, self.reservation))
         self.assertFalse(can_view_reservation_owner(self.guest, self.reservation))
 
     def test_staff_and_admin_can_review_reservations(self):
@@ -262,7 +263,7 @@ class TrainingManagementTests(TestCase):
         self.staff = User.objects.create_user(
             username='training-staff',
             password='secure-pass-123',
-            email='training-staff@edu.omsk.ru',
+            email='training-staff@auca.kg',
             full_name='Training Staff',
             phone='+70000000060',
             role=UserRole.STAFF,

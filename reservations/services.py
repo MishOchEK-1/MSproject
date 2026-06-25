@@ -13,6 +13,30 @@ from users.models import UserRole
 from .models import Reservation, ReservationStatus
 
 
+def format_duration_human(duration_minutes):
+    hours, minutes = divmod(duration_minutes, 60)
+    parts = []
+    if hours:
+        parts.append(f'{hours} ч')
+    if minutes:
+        parts.append(f'{minutes} мин')
+    return ' '.join(parts) or '0 мин'
+
+
+def format_reservation_notification_details(reservation):
+    local_start = timezone.localtime(reservation.start_at)
+    local_end = timezone.localtime(reservation.end_at)
+    duration = format_duration_human(reservation.duration_minutes)
+    parts = [
+        f'Дата: {local_start:%d.%m.%Y}. '
+        f'Время: {local_start:%H:%M}-{local_end:%H:%M}.'
+    ]
+    if local_start.date() != local_end.date():
+        parts.append(f'Окончание: {local_end:%d.%m.%Y %H:%M}.')
+    parts.append(f'Длительность: {duration}.')
+    return ' '.join(parts)
+
+
 def sync_reservation_lifecycle():
     now = timezone.now()
 
@@ -62,7 +86,8 @@ def create_reservation(*, user, equipment, start_at, duration_minutes, request_c
 
     if reservation.status == ReservationStatus.PENDING:
         title = 'Новая заявка на бронирование'
-        message = f'Ваша заявка на "{equipment.name}" отправлена на подтверждение.'
+        details = format_reservation_notification_details(reservation)
+        message = f'Ваша заявка на "{equipment.name}" отправлена на подтверждение. {details}'
         notification_type = NotificationType.RESERVATION_CREATED
     else:
         title = 'Бронь подтверждена автоматически'
@@ -85,7 +110,11 @@ def create_reservation(*, user, equipment, start_at, duration_minutes, request_c
                 actor=user,
                 notification_type=NotificationType.RESERVATION_CREATED,
                 title='Новая заявка на подтверждение',
-                message=f'Поступила новая заявка на "{equipment.name}" от пользователя {user.full_name or user.username}.',
+                message=(
+                    f'Поступила новая заявка на "{equipment.name}" '
+                    f'от пользователя {user.full_name or user.username}. '
+                    f'{format_reservation_notification_details(reservation)}'
+                ),
                 reservation=reservation,
             )
     log_action(

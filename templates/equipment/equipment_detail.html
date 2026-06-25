@@ -87,6 +87,8 @@
                     </div>
                     {% if slot.status == 'free' %}
                         <span class="status-badge status-badge--free">Свободно</span>
+                    {% elif slot.status == 'view-only' %}
+                        <span class="status-badge status-badge--view-only">Старт недоступен</span>
                     {% elif slot.status == 'blocked' %}
                         <span class="status-badge status-badge--blocked">Недоступно</span>
                     {% else %}
@@ -102,8 +104,8 @@
                                 <div class="inline-note">{{ detail }}</div>
                             {% endfor %}
                         </div>
-                    {% elif slot.status == 'free' %}
-                        <div class="inline-note" style="margin-top:10px;">Окно доступно для старта бронирования в этот час.</div>
+                    {% elif slot.note %}
+                        <div class="inline-note" style="margin-top:10px;">{{ slot.note }}</div>
                     {% endif %}
                 </div>
 

@@ -5,10 +5,15 @@ from django.urls import reverse
 from django.utils import timezone
 
 from equipment.models import Equipment, EquipmentCategory, EquipmentDowntime
-from notifications.models import Notification
+from notifications.models import Notification, NotificationType
 from users.models import User
 
 from .models import Reservation, ReservationStatus
+
+
+def make_local_datetime(*, day_offset=1, hour=10, minute=0):
+    target_day = timezone.localdate() + timedelta(days=day_offset)
+    return timezone.make_aware(datetime.combine(target_day, time(hour=hour, minute=minute)))
 
 
 class ReservationModelTests(TestCase):
@@ -28,22 +33,24 @@ class ReservationModelTests(TestCase):
         )
 
     def test_pending_reservation_gets_default_expiry(self):
+        start_at = make_local_datetime(day_offset=1, hour=10)
         reservation = Reservation.objects.create(
             user=self.user,
             equipment=self.equipment,
-            start_at=timezone.now() + timedelta(days=1),
-            end_at=timezone.now() + timedelta(days=1, hours=2),
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=2),
         )
 
         self.assertEqual(reservation.status, ReservationStatus.PENDING)
         self.assertIsNotNone(reservation.expires_at)
 
     def test_reservation_rejects_too_short_duration(self):
+        start_at = make_local_datetime(day_offset=1, hour=10)
         reservation = Reservation(
             user=self.user,
             equipment=self.equipment,
-            start_at=timezone.now() + timedelta(days=1),
-            end_at=timezone.now() + timedelta(days=1, minutes=10),
+            start_at=start_at,
+            end_at=start_at + timedelta(minutes=10),
         )
 
         with self.assertRaisesMessage(Exception, 'Минимальная длительность брони для этого оборудования - 60 минут.'):
@@ -52,7 +59,7 @@ class ReservationModelTests(TestCase):
     def test_reservation_allows_exact_slot_even_when_not_multiple_of_ten(self):
         self.equipment.slot_duration_minutes = 45
         self.equipment.save(update_fields=['slot_duration_minutes'])
-        start_at = timezone.now() + timedelta(days=1)
+        start_at = make_local_datetime(day_offset=1, hour=10)
         reservation = Reservation(
             user=self.user,
             equipment=self.equipment,
@@ -65,7 +72,7 @@ class ReservationModelTests(TestCase):
     def test_reservation_rejects_duration_above_slot_when_not_multiple_of_ten(self):
         self.equipment.slot_duration_minutes = 45
         self.equipment.save(update_fields=['slot_duration_minutes'])
-        start_at = timezone.now() + timedelta(days=1)
+        start_at = make_local_datetime(day_offset=1, hour=10)
         reservation = Reservation(
             user=self.user,
             equipment=self.equipment,
@@ -77,7 +84,7 @@ class ReservationModelTests(TestCase):
             reservation.full_clean()
 
     def test_reservation_rejects_overlap_for_same_equipment(self):
-        start_at = timezone.now() + timedelta(days=2)
+        start_at = make_local_datetime(day_offset=2, hour=10)
         Reservation.objects.create(
             user=self.user,
             equipment=self.equipment,
@@ -103,7 +110,7 @@ class ReservationModelTests(TestCase):
             overlapping.full_clean()
 
     def test_reservation_rejects_overlap_with_pending_reservation(self):
-        start_at = timezone.now() + timedelta(days=2)
+        start_at = make_local_datetime(day_offset=2, hour=10)
         Reservation.objects.create(
             user=self.user,
             equipment=self.equipment,
@@ -129,11 +136,12 @@ class ReservationModelTests(TestCase):
             overlapping.full_clean()
 
     def test_rejected_reservation_requires_reason(self):
+        start_at = make_local_datetime(day_offset=1, hour=10)
         reservation = Reservation(
             user=self.user,
             equipment=self.equipment,
-            start_at=timezone.now() + timedelta(days=1),
-            end_at=timezone.now() + timedelta(days=1, hours=1),
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
             status=ReservationStatus.REJECTED,
         )
 
@@ -141,7 +149,7 @@ class ReservationModelTests(TestCase):
             reservation.full_clean()
 
     def test_reservation_rejects_downtime_overlap(self):
-        start_at = timezone.now() + timedelta(days=3)
+        start_at = make_local_datetime(day_offset=3, hour=10)
         EquipmentDowntime.objects.create(
             equipment=self.equipment,
             start_at=start_at,
@@ -158,6 +166,53 @@ class ReservationModelTests(TestCase):
         with self.assertRaisesMessage(Exception, 'Оборудование недоступно в выбранный период.'):
             reservation.full_clean()
 
+    def test_reservation_rejects_start_before_nine(self):
+        start_at = make_local_datetime(day_offset=1, hour=8, minute=59)
+        reservation = Reservation(
+            user=self.user,
+            equipment=self.equipment,
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
+        )
+
+        with self.assertRaisesMessage(Exception, 'Начать бронь можно только с 09:00 до 19:00. Завершение может быть позже 19:00.'):
+            reservation.full_clean()
+
+    def test_reservation_allows_start_at_nineteen_and_end_after_nineteen(self):
+        start_at = make_local_datetime(day_offset=1, hour=19, minute=0)
+        reservation = Reservation(
+            user=self.user,
+            equipment=self.equipment,
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=2),
+        )
+
+        reservation.full_clean()
+
+    def test_reservation_rejects_start_after_nineteen(self):
+        start_at = make_local_datetime(day_offset=1, hour=19, minute=1)
+        reservation = Reservation(
+            user=self.user,
+            equipment=self.equipment,
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
+        )
+
+        with self.assertRaisesMessage(Exception, 'Начать бронь можно только с 09:00 до 19:00. Завершение может быть позже 19:00.'):
+            reservation.full_clean()
+
+    def test_reservation_rejects_start_outside_twenty_minute_step(self):
+        start_at = make_local_datetime(day_offset=1, hour=9, minute=7)
+        reservation = Reservation(
+            user=self.user,
+            equipment=self.equipment,
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
+        )
+
+        with self.assertRaisesMessage(Exception, 'Время старта должно быть с шагом 20 минут: 09:00, 09:20, 09:40 и далее.'):
+            reservation.full_clean()
+
 
 class ReservationFlowTests(TestCase):
     def setUp(self):
@@ -172,7 +227,7 @@ class ReservationFlowTests(TestCase):
         self.student = User.objects.create_user(
             username='flow-student',
             password='secure-pass-123',
-            email='student-flow@edu.omsk.ru',
+            email='student-flow@auca.kg',
             full_name='Flow Student',
             phone='+70000000040',
             role='student',
@@ -181,7 +236,7 @@ class ReservationFlowTests(TestCase):
         self.staff = User.objects.create_user(
             username='flow-staff',
             password='secure-pass-123',
-            email='staff-flow@edu.omsk.ru',
+            email='staff-flow@tsiauca.kg',
             full_name='Flow Staff',
             phone='+70000000041',
             role='staff',
@@ -197,7 +252,7 @@ class ReservationFlowTests(TestCase):
 
     def test_student_reservation_goes_to_pending(self):
         self.client.force_login(self.student)
-        start_at = (timezone.localtime(timezone.now()) + timedelta(days=1)).replace(minute=0, second=0, microsecond=0)
+        start_at = make_local_datetime(day_offset=1, hour=10)
         response = self.client.post(
             reverse('reservations:create', args=[self.equipment.pk]),
             {
@@ -212,9 +267,91 @@ class ReservationFlowTests(TestCase):
         self.assertEqual(reservation.status, ReservationStatus.PENDING)
         self.assertGreaterEqual(Notification.objects.filter(reservation=reservation).count(), 2)
 
+    def test_pending_user_notification_includes_date_time_and_duration(self):
+        self.client.force_login(self.student)
+        start_at = make_local_datetime(day_offset=1, hour=10)
+
+        response = self.client.post(
+            reverse('reservations:create', args=[self.equipment.pk]),
+            {
+                'start_at': start_at.strftime('%Y-%m-%dT%H:%M'),
+                'duration_minutes': 70,
+                'request_comment': 'Нужен рез для проекта',
+            },
+        )
+
+        self.assertRedirects(response, reverse('reservations:list'))
+        reservation = Reservation.objects.get(user=self.student, equipment=self.equipment)
+        user_notification = Notification.objects.get(
+            recipient=self.student,
+            reservation=reservation,
+            notification_type=NotificationType.RESERVATION_CREATED,
+        )
+        self.assertIn('Дата:', user_notification.message)
+        self.assertIn(start_at.strftime('%d.%m.%Y'), user_notification.message)
+        self.assertIn('Время: 10:00-11:10.', user_notification.message)
+        self.assertIn('Длительность: 1 ч 10 мин.', user_notification.message)
+
+    def test_pending_reviewer_notification_includes_date_time_and_duration(self):
+        self.client.force_login(self.student)
+        start_at = make_local_datetime(day_offset=1, hour=19)
+
+        response = self.client.post(
+            reverse('reservations:create', args=[self.equipment.pk]),
+            {
+                'start_at': start_at.strftime('%Y-%m-%dT%H:%M'),
+                'duration_minutes': 60,
+                'request_comment': '',
+            },
+        )
+
+        self.assertRedirects(response, reverse('reservations:list'))
+        reservation = Reservation.objects.get(user=self.student, equipment=self.equipment, start_at=start_at)
+        reviewer_notification = Notification.objects.get(
+            recipient=self.staff,
+            reservation=reservation,
+            notification_type=NotificationType.RESERVATION_CREATED,
+        )
+        self.assertIn('Дата:', reviewer_notification.message)
+        self.assertIn(start_at.strftime('%d.%m.%Y'), reviewer_notification.message)
+        self.assertIn('Время: 19:00-20:00.', reviewer_notification.message)
+        self.assertIn('Длительность: 1 ч.', reviewer_notification.message)
+        self.assertIn(self.student.full_name, reviewer_notification.message)
+
+    def test_pending_notification_adds_explicit_end_datetime_when_reservation_crosses_midnight(self):
+        self.client.force_login(self.student)
+        start_at = make_local_datetime(day_offset=1, hour=19)
+
+        response = self.client.post(
+            reverse('reservations:create', args=[self.equipment.pk]),
+            {
+                'start_at': start_at.strftime('%Y-%m-%dT%H:%M'),
+                'duration_minutes': 360,
+                'request_comment': '',
+            },
+        )
+
+        self.assertRedirects(response, reverse('reservations:list'))
+        reservation = Reservation.objects.get(user=self.student, equipment=self.equipment, start_at=start_at)
+        user_notification = Notification.objects.get(
+            recipient=self.student,
+            reservation=reservation,
+            notification_type=NotificationType.RESERVATION_CREATED,
+        )
+        reviewer_notification = Notification.objects.get(
+            recipient=self.staff,
+            reservation=reservation,
+            notification_type=NotificationType.RESERVATION_CREATED,
+        )
+        expected_end = (start_at + timedelta(hours=6)).strftime('%d.%m.%Y %H:%M')
+        self.assertIn('Время: 19:00-01:00.', user_notification.message)
+        self.assertIn(f'Окончание: {expected_end}.', user_notification.message)
+        self.assertIn(f'Окончание: {expected_end}.', reviewer_notification.message)
+        self.assertIn('Длительность: 6 ч.', user_notification.message)
+
     def test_staff_reservation_is_auto_approved(self):
         self.client.force_login(self.staff)
-        start_at = (timezone.localtime(timezone.now()) + timedelta(days=1)).replace(minute=0, second=0, microsecond=0)
+        start_at = make_local_datetime(day_offset=1, hour=11)
         response = self.client.post(
             reverse('reservations:create', args=[self.equipment.pk]),
             {
@@ -231,7 +368,7 @@ class ReservationFlowTests(TestCase):
 
     def test_create_reservation_rejects_duration_less_than_slot(self):
         self.client.force_login(self.student)
-        start_at = (timezone.localtime(timezone.now()) + timedelta(days=1)).replace(minute=0, second=0, microsecond=0)
+        start_at = make_local_datetime(day_offset=1, hour=10)
         response = self.client.post(
             reverse('reservations:create', args=[self.equipment.pk]),
             {
@@ -246,7 +383,7 @@ class ReservationFlowTests(TestCase):
 
     def test_create_reservation_accepts_duration_above_slot_when_multiple_of_ten(self):
         self.client.force_login(self.student)
-        start_at = (timezone.localtime(timezone.now()) + timedelta(days=1)).replace(minute=0, second=0, microsecond=0)
+        start_at = make_local_datetime(day_offset=1, hour=10)
         response = self.client.post(
             reverse('reservations:create', args=[self.equipment.pk]),
             {
@@ -267,11 +404,12 @@ class ReservationFlowTests(TestCase):
         self.assertRedirects(response, reverse('equipment:detail', args=[self.equipment.pk]))
 
     def test_owner_can_cancel_reservation(self):
+        start_at = make_local_datetime(day_offset=2, hour=10)
         reservation = Reservation.objects.create(
             user=self.student,
             equipment=self.equipment,
-            start_at=timezone.now() + timedelta(days=2),
-            end_at=timezone.now() + timedelta(days=2, hours=1),
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
         )
         self.client.force_login(self.student)
         response = self.client.post(
@@ -284,11 +422,12 @@ class ReservationFlowTests(TestCase):
         self.assertEqual(reservation.status, ReservationStatus.CANCELLED)
 
     def test_owner_can_extend_reservation_when_slot_is_free(self):
+        start_at = make_local_datetime(day_offset=2, hour=10)
         reservation = Reservation.objects.create(
             user=self.student,
             equipment=self.equipment,
-            start_at=timezone.now() + timedelta(days=2),
-            end_at=timezone.now() + timedelta(days=2, hours=1),
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
             status=ReservationStatus.APPROVED,
         )
         self.client.force_login(self.student)
@@ -302,11 +441,12 @@ class ReservationFlowTests(TestCase):
         self.assertEqual(reservation.duration_minutes, 70)
 
     def test_owner_cannot_extend_reservation_to_non_multiple_duration_above_slot(self):
+        start_at = make_local_datetime(day_offset=2, hour=10)
         reservation = Reservation.objects.create(
             user=self.student,
             equipment=self.equipment,
-            start_at=timezone.now() + timedelta(days=2),
-            end_at=timezone.now() + timedelta(days=2, hours=1),
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
             status=ReservationStatus.APPROVED,
         )
         self.client.force_login(self.student)
@@ -326,15 +466,18 @@ class ReservationFlowTests(TestCase):
         response = self.client.get(reverse('reservations:create', args=[self.equipment.pk]))
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="start_at"')
+        self.assertContains(response, 'step="1200"')
         self.assertContains(response, 'name="duration_minutes"')
         self.assertContains(response, 'step="10"')
 
     def test_reservation_extend_form_uses_ten_minute_step(self):
+        start_at = make_local_datetime(day_offset=2, hour=10)
         reservation = Reservation.objects.create(
             user=self.student,
             equipment=self.equipment,
-            start_at=timezone.now() + timedelta(days=2),
-            end_at=timezone.now() + timedelta(days=2, hours=1),
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
             status=ReservationStatus.APPROVED,
         )
         self.client.force_login(self.student)
@@ -346,11 +489,12 @@ class ReservationFlowTests(TestCase):
         self.assertContains(response, 'step="10"')
 
     def test_staff_can_approve_pending_reservation(self):
+        start_at = make_local_datetime(day_offset=2, hour=10)
         reservation = Reservation.objects.create(
             user=self.student,
             equipment=self.equipment,
-            start_at=timezone.now() + timedelta(days=2),
-            end_at=timezone.now() + timedelta(days=2, hours=1),
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
             status=ReservationStatus.PENDING,
         )
         self.client.force_login(self.staff)
@@ -364,11 +508,12 @@ class ReservationFlowTests(TestCase):
         self.assertEqual(reservation.status, ReservationStatus.APPROVED)
 
     def test_staff_rejection_requires_reason(self):
+        start_at = make_local_datetime(day_offset=2, hour=10)
         reservation = Reservation.objects.create(
             user=self.student,
             equipment=self.equipment,
-            start_at=timezone.now() + timedelta(days=2),
-            end_at=timezone.now() + timedelta(days=2, hours=1),
+            start_at=start_at,
+            end_at=start_at + timedelta(hours=1),
             status=ReservationStatus.PENDING,
         )
         self.client.force_login(self.staff)
@@ -386,6 +531,71 @@ class ReservationFlowTests(TestCase):
         response = self.client.get(reverse('reservations:staff-dashboard'))
 
         self.assertEqual(response.status_code, 403)
+
+    def test_create_reservation_rejects_start_before_nine(self):
+        self.client.force_login(self.student)
+        start_at = make_local_datetime(day_offset=1, hour=8, minute=59)
+
+        response = self.client.post(
+            reverse('reservations:create', args=[self.equipment.pk]),
+            {
+                'start_at': start_at.strftime('%Y-%m-%dT%H:%M'),
+                'duration_minutes': 60,
+                'request_comment': '',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Начать бронь можно только с 09:00 до 19:00. Завершение может быть позже 19:00.')
+
+    def test_create_reservation_allows_start_at_nineteen_and_end_later(self):
+        self.client.force_login(self.student)
+        start_at = make_local_datetime(day_offset=1, hour=19, minute=0)
+
+        response = self.client.post(
+            reverse('reservations:create', args=[self.equipment.pk]),
+            {
+                'start_at': start_at.strftime('%Y-%m-%dT%H:%M'),
+                'duration_minutes': 60,
+                'request_comment': '',
+            },
+        )
+
+        self.assertRedirects(response, reverse('reservations:list'))
+        reservation = Reservation.objects.get(user=self.student, equipment=self.equipment, start_at=start_at)
+        self.assertEqual(reservation.end_at, start_at + timedelta(hours=1))
+
+    def test_create_reservation_rejects_start_after_nineteen(self):
+        self.client.force_login(self.student)
+        start_at = make_local_datetime(day_offset=1, hour=19, minute=1)
+
+        response = self.client.post(
+            reverse('reservations:create', args=[self.equipment.pk]),
+            {
+                'start_at': start_at.strftime('%Y-%m-%dT%H:%M'),
+                'duration_minutes': 60,
+                'request_comment': '',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Начать бронь можно только с 09:00 до 19:00. Завершение может быть позже 19:00.')
+
+    def test_create_reservation_rejects_start_outside_twenty_minute_step(self):
+        self.client.force_login(self.student)
+        start_at = make_local_datetime(day_offset=1, hour=9, minute=7)
+
+        response = self.client.post(
+            reverse('reservations:create', args=[self.equipment.pk]),
+            {
+                'start_at': start_at.strftime('%Y-%m-%dT%H:%M'),
+                'duration_minutes': 60,
+                'request_comment': '',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Время старта должно быть с шагом 20 минут: 09:00, 09:20, 09:40 и далее.')
 
 
 class ReservationListViewTests(TestCase):
@@ -459,12 +669,12 @@ class ReservationListViewTests(TestCase):
 
     def test_reservation_list_shows_cross_midnight_reservation_on_both_days(self):
         target_day = timezone.localdate() + timedelta(days=2)
-        start_at = timezone.make_aware(datetime.combine(target_day, time(hour=23, minute=30)))
+        start_at = timezone.make_aware(datetime.combine(target_day, time(hour=19, minute=0)))
         Reservation.objects.create(
             user=self.user,
             equipment=self.equipment,
             start_at=start_at,
-            end_at=start_at + timedelta(hours=1),
+            end_at=start_at + timedelta(hours=5, minutes=30),
             status=ReservationStatus.APPROVED,
         )
         self.client.force_login(self.user)
@@ -474,10 +684,10 @@ class ReservationListViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, target_day.strftime('%d.%m.%Y'))
         self.assertContains(response, (target_day + timedelta(days=1)).strftime('%d.%m.%Y'))
-        self.assertContains(response, '23:30 - 00:30', count=2)
+        self.assertContains(response, '19:00 - 00:30', count=2)
 
     def test_reservation_list_keeps_history_separate(self):
-        start_at = timezone.now() - timedelta(days=3)
+        start_at = make_local_datetime(day_offset=-3, hour=10)
         Reservation.objects.create(
             user=self.user,
             equipment=self.equipment,
@@ -508,7 +718,7 @@ class ReservationEndToEndTests(TestCase):
         self.user = User.objects.create_user(
             username='e2e-student',
             password='secure-pass-123',
-            email='e2e-student@edu.omsk.ru',
+            email='e2e-student@auca.kg',
             full_name='E2E Student',
             phone='+70000000110',
             role='student',
@@ -523,21 +733,22 @@ class ReservationEndToEndTests(TestCase):
             reverse('equipment:schedule'),
             {'date': selected_day.strftime('%Y-%m-%d')},
         )
-        booking_url = f'{reverse("reservations:create", args=[self.equipment.pk])}?start_at={selected_day.strftime("%Y-%m-%d")}T00:00'
+        booking_url = f'{reverse("reservations:create", args=[self.equipment.pk])}?start_at={selected_day.strftime("%Y-%m-%d")}T09:00'
         self.assertEqual(schedule_response.status_code, 200)
         self.assertContains(schedule_response, booking_url)
+        self.assertNotContains(schedule_response, f'{reverse("reservations:create", args=[self.equipment.pk])}?start_at={selected_day.strftime("%Y-%m-%d")}T00:00')
 
         form_response = self.client.get(
             reverse('reservations:create', args=[self.equipment.pk]),
-            {'start_at': f'{selected_day.strftime("%Y-%m-%d")}T00:00'},
+            {'start_at': f'{selected_day.strftime("%Y-%m-%d")}T09:00'},
         )
         self.assertEqual(form_response.status_code, 200)
-        self.assertContains(form_response, f'value="{selected_day.strftime("%Y-%m-%d")}T00:00"')
+        self.assertContains(form_response, f'value="{selected_day.strftime("%Y-%m-%d")}T09:00"')
 
         create_response = self.client.post(
             reverse('reservations:create', args=[self.equipment.pk]),
             {
-                'start_at': f'{selected_day.strftime("%Y-%m-%d")}T00:00',
+                'start_at': f'{selected_day.strftime("%Y-%m-%d")}T09:00',
                 'duration_minutes': 60,
                 'request_comment': 'Сквозной сценарий бронирования',
             },
@@ -550,6 +761,6 @@ class ReservationEndToEndTests(TestCase):
         calendar_response = self.client.get(reverse('reservations:list'))
         self.assertEqual(calendar_response.status_code, 200)
         self.assertContains(calendar_response, 'CNC E2E')
-        self.assertContains(calendar_response, '00:00 - 01:00')
+        self.assertContains(calendar_response, '09:00 - 10:00')
         self.assertContains(calendar_response, 'Сквозной сценарий бронирования')
         self.assertContains(calendar_response, ReservationStatus.PENDING.label)
